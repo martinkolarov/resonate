@@ -1,0 +1,39 @@
+{
+  "name": "@resonate/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsx watch ./src/server.ts",
+    "start": "node ./dist/server.mjs",
+    "db:codegen": "kysely-codegen --config-file ./kysely-codegen.config.json",
+    "db:codegen:check": "pnpm db:codegen --verify",
+    "migrate:make": "kysely migrate make",
+    "migrate:latest": "kysely migrate latest",
+    "migrate:down": "kysely migrate down",
+    "test": "tsx --test ./src/*.test.ts ./src/**/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@resonate/contracts": "workspace:*",
+    "cookie": "^2.0.1",
+    "dotenv": "^17.4.2",
+    "dotenv-expand": "^12.0.3",
+    "express": "^5.2.1",
+    "kysely": "^0.29.3",
+    "pg": "^8.22.0",
+    "resend": "^6.17.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.1",
+    "@types/pg": "^8.20.0",
+    "kysely-codegen": "^0.20.0",
+    "kysely-ctl": "^0.21.0",
+    "tsdown": "^0.22.12",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.3"
+  }
+}

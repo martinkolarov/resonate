@@ -1,0 +1,6 @@
+{
+  "dialect": "postgres",
+  "envFile": "./.env",
+  "excludePattern": "public.{kysely_migration,kysely_migration_lock,schema_migrations}",
+  "outFile": "./src/types/db.generated.types.ts"
+}

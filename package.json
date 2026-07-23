@@ -1,0 +1,35 @@
+{
+  "name": "resonate",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A meeting and lecture processing application.",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "dev:api": "pnpm --filter @resonate/api dev",
+    "dev:frontend": "pnpm --filter @resonate/frontend dev",
+    "build": "pnpm --recursive --if-present build",
+    "db:codegen": "pnpm --filter @resonate/api db:codegen",
+    "db:codegen:check": "pnpm --filter @resonate/api db:codegen:check",
+    "migrate:create": "pnpm --filter @resonate/api migrate:create",
+    "migrate:run": "pnpm --filter @resonate/api migrate:run",
+    "migrate:rollback": "pnpm --filter @resonate/api migrate:rollback",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "test": "pnpm --recursive --if-present test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.0",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.7.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.5",
+    "typescript-eslint": "^8.63.0"
+  }
+}

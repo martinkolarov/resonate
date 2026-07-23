@@ -1,0 +1,11 @@
+https://localhost:8080 {
+	redir /api /api/ 308
+
+	handle_path /api/* {
+		reverse_proxy 127.0.0.1:8181
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:5173
+	}
+}

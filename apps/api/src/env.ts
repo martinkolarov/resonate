@@ -1,0 +1,12 @@
+import dotenv from 'dotenv';
+import dotenvExpand from 'dotenv-expand';
+import z from 'zod';
+
+dotenvExpand.expand(dotenv.config({ path: new URL('../.env', import.meta.url) }));
+
+const envSchema = z.object({
+  DATABASE_URL: z.url(),
+  RESEND_API_KEY: z.string(),
+});
+
+export default envSchema.parse(process.env);
