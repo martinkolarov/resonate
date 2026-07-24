@@ -16,7 +16,6 @@ export class ResendEmailSender implements EmailSender {
       html,
     });
     if (error) {
-      console.error(error);
       throw error;
     }
   }

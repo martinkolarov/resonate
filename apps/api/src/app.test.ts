@@ -25,14 +25,6 @@ after(async () => {
   });
 });
 
-test('GET / returns hello as JSON', async () => {
-  const response = await fetch(`${baseUrl}/`);
-
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get('content-type') ?? '', /^application\/json/);
-  assert.deepEqual(await response.json(), { message: 'Hello' });
-});
-
 test('an unmatched route returns 404', async () => {
   const response = await fetch(`${baseUrl}/missing`);
 

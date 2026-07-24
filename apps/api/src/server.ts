@@ -1,8 +1,15 @@
 import { createApp } from '@/app.js';
 import { db } from '@/infrastructure/db.js';
+import { logger } from '@/infrastructure/logger.js';
+import * as Sentry from '@sentry/node';
+
+const host = '127.0.0.1';
+const port = 8181;
 
 const app = createApp();
-const server = app.listen(8181, '127.0.0.1');
+const server = app.listen(port, host, () => {
+  logger.info({ host, port }, 'Server started');
+});
 
 function closeServer() {
   return new Promise<void>((resolve, reject) => {
@@ -14,20 +21,20 @@ function closeServer() {
 }
 
 let isShuttingDown = false;
-
 async function shutdown() {
   if (isShuttingDown) return;
   isShuttingDown = true;
-
   try {
-    console.info('Server is shutting down...');
+    logger.info('Server is shutting down');
     await closeServer();
     await db.destroy();
-    console.info('Server shut down successfully');
+    logger.info('Server shut down successfully');
     process.exitCode = 0;
   } catch (error) {
-    console.error('Server failed to shut down', error);
+    logger.error({ error }, 'Server failed to shut down');
     process.exitCode = 1;
+  } finally {
+    await Sentry.close(2_000);
   }
 }
 
