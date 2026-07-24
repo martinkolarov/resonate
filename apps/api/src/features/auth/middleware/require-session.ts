@@ -2,8 +2,8 @@ import { parseCookie } from 'cookie';
 import type { NextFunction, Request, Response } from 'express';
 import { db } from '@/infrastructure/db.js';
 import { ApiError } from '@/lib/errors.js';
-import { hashSessionToken } from '../lib/session-token.js';
-import { SessionRepository } from '../repositories/session.repository.js';
+import { hashSessionToken } from '@/features/auth/lib/session-token.js';
+import { SessionRepository } from '@/features/auth/repositories/session.repository.js';
 
 const sessions = new SessionRepository(db);
 

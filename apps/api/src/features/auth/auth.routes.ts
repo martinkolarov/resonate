@@ -2,11 +2,11 @@ import { Router } from 'express';
 import { signInRequestSchema, signUpRequestSchema } from '@resonate/contracts';
 import { ValidationError } from '@/lib/errors.js';
 import { db } from '@/infrastructure/db.js';
-import { AuthService } from './auth.service.js';
-import { SessionRepository } from './repositories/session.repository.js';
-import { UserRepository } from './repositories/user.repository.js';
-import { requireSession } from './middleware/require-session.js';
-import { EmailVerificationRepository } from './repositories/email-verification.repository.js';
+import { AuthService } from '@/features/auth/auth.service.js';
+import { SessionRepository } from '@/features/auth/repositories/session.repository.js';
+import { UserRepository } from '@/features/auth/repositories/user.repository.js';
+import { requireSession } from '@/features/auth/middleware/require-session.js';
+import { EmailVerificationRepository } from '@/features/auth/repositories/email-verification.repository.js';
 import { ResendEmailSender } from '@/infrastructure/email/resend-email-sender.js';
 import env from '@/env.js';
 

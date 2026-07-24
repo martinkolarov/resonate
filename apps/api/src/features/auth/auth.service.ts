@@ -1,11 +1,11 @@
 import crypto from 'node:crypto';
 import type { SignInRequest, SignUpRequest } from '@resonate/contracts';
 import { ApiError } from '@/lib/errors.js';
-import { hashPassword, verifyPassword } from './lib/password-hashing.js';
-import { generateSessionToken, hashSessionToken } from './lib/session-token.js';
-import type { SessionRepository } from './repositories/session.repository.js';
-import type { UserRepository } from './repositories/user.repository.js';
-import { EmailVerificationRepository } from './repositories/email-verification.repository.js';
+import { hashPassword, verifyPassword } from '@/features/auth/lib/password-hashing.js';
+import { generateSessionToken, hashSessionToken } from '@/features/auth/lib/session-token.js';
+import type { SessionRepository } from '@/features/auth/repositories/session.repository.js';
+import type { UserRepository } from '@/features/auth/repositories/user.repository.js';
+import { EmailVerificationRepository } from '@/features/auth/repositories/email-verification.repository.js';
 import { EmailSender } from '@/ports.js';
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
