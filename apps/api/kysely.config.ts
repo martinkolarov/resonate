@@ -1,5 +1,5 @@
 import { defineConfig } from 'kysely-ctl';
-import { db } from '@/infrastructure/postgres.js';
+import { db } from '@/infrastructure/db.js';
 
 export default defineConfig({
   kysely: db,

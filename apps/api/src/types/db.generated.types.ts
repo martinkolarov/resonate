@@ -14,7 +14,7 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 export interface EmailVerifications {
   created_at: Generated<Timestamp>;
   expires_at: Timestamp;
-  hashed_code: string;
+  hashed_token: string;
   user_id: string;
 }
 

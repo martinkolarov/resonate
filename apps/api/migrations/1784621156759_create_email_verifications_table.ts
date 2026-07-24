@@ -7,7 +7,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn('user_id', 'uuid', column =>
       column.primaryKey().references('users.id').onDelete('cascade')
     )
-    .addColumn('hashed_code', 'text', column => column.notNull().unique())
+    .addColumn('hashed_token', 'text', column => column.notNull().unique())
     .addColumn('created_at', 'timestamptz', column => column.notNull().defaultTo(sql`now()`))
     .addColumn('expires_at', 'timestamptz', column => column.notNull())
     .execute();

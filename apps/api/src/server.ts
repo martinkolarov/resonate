@@ -1,5 +1,5 @@
 import { createApp } from '@/app.js';
-import { db } from '@/infrastructure/postgres.js';
+import { db } from '@/infrastructure/db.js';
 
 const app = createApp();
 const server = app.listen(8181, '127.0.0.1');

@@ -13,26 +13,15 @@ export class UserRepository {
       .executeTakeFirst();
   }
 
-  async create({
-    name,
-    email,
-    password,
-  }: {
-    name: string;
-    email: string;
-    password: string;
-  }): Promise<boolean> {
-    const createdUser = await this.db
+  async create({ name, email, password }: { name: string; email: string; password: string }) {
+    return await this.db
       .insertInto('users')
       .values({
         name,
         email,
         password,
       })
-      .onConflict(conflict => conflict.column('email').doNothing())
-      .returning('id')
+      .returning(['id', 'name', 'email'])
       .executeTakeFirst();
-
-    return createdUser !== undefined;
   }
 }
