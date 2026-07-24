@@ -1,6 +1,7 @@
 import express, { type ErrorRequestHandler, type Express } from 'express';
 import { authRouter } from '@/features/auth/auth.routes.js';
 import { ApiError, ValidationError } from '@/lib/errors.js';
+import * as Sentry from '@sentry/node';
 
 const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, next) => {
   if (res.headersSent) {
@@ -25,6 +26,7 @@ export function createApp(): Express {
   });
   app.use('/auth', authRouter);
 
+  Sentry.setupExpressErrorHandler(app);
   app.use(errorHandler);
 
   return app;

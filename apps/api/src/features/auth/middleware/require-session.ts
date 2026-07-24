@@ -2,8 +2,8 @@ import { parseCookie } from 'cookie';
 import type { NextFunction, Request, Response } from 'express';
 import { db } from '@/infrastructure/db.js';
 import { ApiError } from '@/lib/errors.js';
-import { hashSessionToken } from '@/features/auth/lib/session-token.js';
 import { SessionRepository } from '@/features/auth/repositories/session.repository.js';
+import { hashToken } from '@/features/auth/lib/tokens.js';
 
 const sessions = new SessionRepository(db);
 
@@ -16,7 +16,7 @@ export async function requireSession(req: Request, res: Response, next: NextFunc
       throw new ApiError('UNAUTHENTICATED');
     }
 
-    const hashedToken = hashSessionToken(token);
+    const hashedToken = hashToken(token);
     const user = await sessions.findUserByValidTokenHash(hashedToken);
 
     if (!user) {

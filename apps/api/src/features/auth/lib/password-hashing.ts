@@ -3,6 +3,12 @@ import { promisify } from '@/lib/promisify.js';
 
 const promisifiedArgon2 = promisify(crypto.argon2);
 
+const SALT_BYTES = 16;
+
+export function generateSalt() {
+  return crypto.randomBytes(SALT_BYTES);
+}
+
 export async function hashPassword(password: string, salt: Buffer) {
   return promisifiedArgon2('argon2id', {
     message: password,

@@ -1,12 +1,19 @@
-import crypto from 'node:crypto';
 import type { SignInRequest, SignUpRequest } from '@resonate/contracts';
 import { ApiError } from '@/lib/errors.js';
-import { hashPassword, verifyPassword } from '@/features/auth/lib/password-hashing.js';
-import { generateSessionToken, hashSessionToken } from '@/features/auth/lib/session-token.js';
+import {
+  generateSalt,
+  hashPassword,
+  verifyPassword,
+} from '@/features/auth/lib/password-hashing.js';
 import type { SessionRepository } from '@/features/auth/repositories/session.repository.js';
 import type { UserRepository } from '@/features/auth/repositories/user.repository.js';
 import { EmailVerificationRepository } from '@/features/auth/repositories/email-verification.repository.js';
 import { EmailSender } from '@/ports.js';
+import {
+  generateEmailVerificationToken,
+  generateSessionToken,
+  hashToken,
+} from '@/features/auth/lib/tokens.js';
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -19,7 +26,7 @@ export class AuthService {
   ) {}
 
   async register({ name, email, password }: SignUpRequest): Promise<void> {
-    const salt = crypto.randomBytes(16);
+    const salt = generateSalt();
     const hashedPassword = await hashPassword(password, salt);
 
     const user = await this.users.create({
@@ -36,9 +43,8 @@ export class AuthService {
   }
 
   async sendEmailVerification(user: { id: string; name: string; email: string }) {
-    const token = crypto.randomBytes(16).toString('base64url');
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    await this.emailVerifications.upsert(user.id, hashedToken);
+    const token = generateEmailVerificationToken();
+    await this.emailVerifications.upsert(user.id, hashToken(token));
     await this.emailSender.send(user.email, 'Hello there', `<h1>${token}</h1>`);
   }
 
@@ -55,7 +61,7 @@ export class AuthService {
     }
 
     const token = generateSessionToken();
-    const hashedToken = hashSessionToken(token);
+    const hashedToken = hashToken(token);
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
     await this.sessions.create({

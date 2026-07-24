@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsdown",
-    "dev": "tsx watch ./src/server.ts",
-    "start": "node ./dist/server.mjs",
+    "dev": "node --watch --import tsx --import ./src/infrastructure/instrument.ts ./src/server.ts",
+    "start": "node --import ./dist/instrument.mjs ./dist/server.mjs",
     "db:codegen": "kysely-codegen --config-file ./kysely-codegen.config.json",
     "db:codegen:check": "pnpm db:codegen --verify",
     "migrate:make": "kysely migrate make",
@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@resonate/contracts": "workspace:*",
+    "@sentry/node": "^10.68.0",
     "cookie": "^2.0.1",
     "dotenv": "^17.4.2",
     "dotenv-expand": "^12.0.3",
