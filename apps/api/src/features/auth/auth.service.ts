@@ -25,7 +25,7 @@ export class AuthService {
     private readonly emailSender: EmailSender
   ) {}
 
-  async register({ name, email, password }: SignUpRequest): Promise<void> {
+  async register({ name, email, password }: SignUpRequest) {
     const salt = generateSalt();
     const hashedPassword = await hashPassword(password, salt);
 
@@ -40,9 +40,16 @@ export class AuthService {
     }
 
     await this.sendEmailVerification(user);
+
+    const { token, expiresAt } = await this.startSession(user.id);
+
+    return {
+      token,
+      expiresAt,
+    };
   }
 
-  async sendEmailVerification(user: { id: string; name: string; email: string }) {
+  private async sendEmailVerification(user: { id: string; name: string; email: string }) {
     const token = generateEmailVerificationToken();
     await this.emailVerifications.upsert(user.id, hashToken(token));
     await this.emailSender.send(user.email, 'Hello there', `<h1>${token}</h1>`);
@@ -60,16 +67,35 @@ export class AuthService {
       throw new ApiError('INVALID_CREDENTIALS');
     }
 
+    const { token, expiresAt } = await this.startSession(user.id);
+
+    return { token, expiresAt };
+  }
+
+  private async startSession(userId: string) {
     const token = generateSessionToken();
     const hashedToken = hashToken(token);
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
     await this.sessions.create({
-      userId: user.id,
+      userId,
       hashedToken,
       expiresAt,
     });
 
-    return { token, expiresAt };
+    return {
+      token,
+      expiresAt,
+    };
+  }
+
+  async authenticateSession(token: string) {
+    const user = await this.sessions.findUserByValidTokenHash(hashToken(token));
+
+    if (!user) {
+      throw new ApiError('UNAUTHENTICATED');
+    }
+
+    return user;
   }
 }
