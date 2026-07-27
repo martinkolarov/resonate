@@ -7,8 +7,11 @@ import { signUpFormSchema, type SignUpFormValues } from '@/features/auth/auth.sc
 import { useMutation } from '@tanstack/react-query';
 import { signUp } from '@/features/auth/auth.api';
 import { getServerValidationErrors } from '@/lib/get-server-validation-errors';
+import { useToast } from '@/components/ToastProvider';
+import type { SignUpRequest } from '@resonate/contracts';
 
 export function SignUpForm() {
+  const { toast } = useToast();
   const {
     register,
     handleSubmit,
@@ -22,6 +25,8 @@ export function SignUpForm() {
     mutationFn: signUp,
   });
   const onSubmit = handleSubmit(data => {
+    if (signUpMutation.isPending) return;
+
     const { email, name, password } = data;
 
     signUpMutation.mutate(
@@ -30,10 +35,14 @@ export function SignUpForm() {
         onError: data => {
           const errors = getServerValidationErrors(data);
           for (const [field, message] of errors) {
-            setError(field as FieldPath<SignUpFormValues>, {
-              type: 'server',
-              message,
-            });
+            if (field === 'root') {
+              toast(message, 'danger', 10000);
+            } else {
+              setError(field as FieldPath<SignUpRequest>, {
+                type: 'server',
+                message,
+              });
+            }
           }
         },
       }
@@ -42,7 +51,6 @@ export function SignUpForm() {
 
   return (
     <form noValidate className="flex flex-col gap-3" onSubmit={onSubmit}>
-      {errors.root?.message && <p className="text-danger text-sm">{errors.root.message}</p>}
       <Input
         {...register('email')}
         isRequired
@@ -97,7 +105,12 @@ export function SignUpForm() {
           <p className="text-danger mt-1 text-xs">{errors.termsAccepted.message}</p>
         )}
       </div>
-      <Button color="primary" type="submit" isLoading={signUpMutation.isPending}>
+      <Button
+        color="primary"
+        type="submit"
+        isDisabled={signUpMutation.isPending}
+        isLoading={signUpMutation.isPending}
+      >
         Sign Up
       </Button>
     </form>

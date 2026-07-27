@@ -8,8 +8,10 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { signIn } from '@/features/auth/auth.api';
 import { getServerValidationErrors } from '@/lib/get-server-validation-errors';
+import { useToast } from '@/components/ToastProvider';
 
 export function SignInForm() {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const {
     register,
@@ -22,6 +24,8 @@ export function SignInForm() {
     onSuccess: () => navigate('/dashboard', { replace: true }),
   });
   const onSubmit = handleSubmit(data => {
+    if (signInMutation.isPending) return;
+
     const { email, password } = data;
     signInMutation.mutate(
       { email, password },
@@ -29,10 +33,14 @@ export function SignInForm() {
         onError: data => {
           const errors = getServerValidationErrors(data);
           for (const [field, message] of errors) {
-            setError(field as FieldPath<SignInRequest>, {
-              type: 'server',
-              message,
-            });
+            if (field === 'root') {
+              toast(message, 'danger', 10000);
+            } else {
+              setError(field as FieldPath<SignInRequest>, {
+                type: 'server',
+                message,
+              });
+            }
           }
         },
       }
@@ -40,7 +48,6 @@ export function SignInForm() {
   });
   return (
     <form noValidate className="flex flex-col gap-3" onSubmit={onSubmit}>
-      {errors.root?.message && <p className="text-danger text-sm">{errors.root.message}</p>}
       <Input
         {...register('email')}
         type="email"
@@ -67,7 +74,12 @@ export function SignInForm() {
           Forgot password?
         </Link>
       </div>
-      <Button color="primary" type="submit" isLoading={signInMutation.isPending}>
+      <Button
+        color="primary"
+        type="submit"
+        isDisabled={signInMutation.isPending}
+        isLoading={signInMutation.isPending}
+      >
         Log In
       </Button>
     </form>
