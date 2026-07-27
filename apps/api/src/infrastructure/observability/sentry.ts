@@ -6,8 +6,8 @@ const sentryDsn = env.SENTRY_DSN;
 if (sentryDsn) {
   Sentry.init({
     dsn: env.SENTRY_DSN,
-    debug: false,
-    enableLogs: true,
+    debug: true,
+    enableLogs: false,
     integrations: [
       Sentry.pinoIntegration({
         log: { levels: ['info', 'warn', 'error', 'fatal'] },

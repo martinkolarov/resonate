@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from 'express';
-import { logger } from '@/infrastructure/logger.js';
 import { ApiError, ValidationError } from '@/lib/errors.js';
+import { logger } from '@/infrastructure/observability/logger.js';
 
-const errorLogger = logger.child({ component: 'error-handler' });
+const httpLogger = logger.child({ component: 'http' });
 
 export function errorHandler(error: unknown, req: Request, res: Response, next: NextFunction) {
   if (res.headersSent) {
@@ -13,7 +13,7 @@ export function errorHandler(error: unknown, req: Request, res: Response, next: 
     return res.status(error.statusCode).json(error.toJSON());
   }
 
-  errorLogger.error(
+  httpLogger.error(
     {
       error,
       request: {

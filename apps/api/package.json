@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsdown",
-    "dev": "node --watch --import tsx --import ./src/infrastructure/instrument.ts ./src/server.ts",
-    "start": "node --import ./dist/instrument.mjs ./dist/server.mjs",
+    "dev": "node --watch --import tsx --import ./src/infrastructure/observability/sentry.ts ./src/server.ts",
+    "start": "node --import ./dist/sentry.mjs ./dist/server.mjs",
     "db:codegen": "kysely-codegen --config-file ./kysely-codegen.config.json",
     "db:codegen:check": "pnpm db:codegen --verify",
     "migrate:make": "kysely migrate make",

@@ -2,7 +2,7 @@ import { defineConfig } from 'tsdown';
 
 export default defineConfig({
   entry: {
-    instrument: 'src/infrastructure/instrument.ts',
+    sentry: 'src/infrastructure/observability/sentry.ts',
     server: 'src/server.ts',
   },
   platform: 'node',

@@ -1,6 +1,6 @@
 import { createApp } from '@/app.js';
 import { db } from '@/infrastructure/db.js';
-import { logger } from '@/infrastructure/logger.js';
+import { logger } from '@/infrastructure/observability/logger.js';
 import * as Sentry from '@sentry/node';
 
 const host = '127.0.0.1';
