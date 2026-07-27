@@ -8,10 +8,10 @@ export async function up(db: Kysely<unknown>) {
     .addColumn('email', 'varchar(255)', column => column.notNull())
     .addColumn('name', 'varchar(255)', column => column.notNull())
     .addColumn('password', 'text', column => column.notNull())
+    .addColumn('provider', 'text', column => column.defaultTo('local'))
     .addColumn('email_verified_at', 'timestamptz')
+    .addUniqueConstraint('users_email_provider_unique', ['email', 'provider'])
     .execute();
-
-  await db.schema.createIndex('users_email_idx').on('users').columns(['email']).execute();
 }
 
 export async function down(db: Kysely<unknown>) {

@@ -22,6 +22,7 @@ export class UserRepository {
         password,
       })
       .returning(['id', 'name', 'email'])
+      .onConflict(conflict => conflict.constraint('users_email_provider_unique').doNothing())
       .executeTakeFirst();
   }
 }
