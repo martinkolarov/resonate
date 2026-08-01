@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     sentry: 'src/infrastructure/observability/sentry.ts',
     server: 'src/server.ts',
+    worker: 'src/worker.ts',
   },
   platform: 'node',
   format: 'esm',

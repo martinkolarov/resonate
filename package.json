@@ -5,7 +5,7 @@
   "description": "A meeting and lecture processing application.",
   "type": "module",
   "scripts": {
-    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "dev": "mprocs",
     "dev:api": "pnpm --filter @resonate/api dev",
     "dev:frontend": "pnpm --filter @resonate/frontend dev",
     "build": "pnpm --recursive --if-present build",
@@ -29,6 +29,7 @@
     "eslint": "^10.7.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.7.0",
+    "mprocs": "^0.9.6",
     "prettier": "^3.9.5",
     "typescript-eslint": "^8.63.0"
   }

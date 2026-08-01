@@ -1,12 +1,12 @@
-import { DB } from '@/types/db.generated.types.js';
-import { Kysely } from 'kysely';
+import type { DB } from '@/types/db.generated.types.js';
+import type { Kysely } from 'kysely';
 
 export class EmailVerificationRepository {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async upsert(userId: string, hashedToken: string) {
+  async upsert(userId: string, hashedToken: string, executor: Kysely<DB> = this.db) {
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
-    await this.db
+    await executor
       .insertInto('email_verifications')
       .values({
         user_id: userId,

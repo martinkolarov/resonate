@@ -21,7 +21,6 @@ export function SignInForm() {
   } = useForm<SignInRequest>({ resolver: zodResolver(signInRequestSchema) });
   const signInMutation = useMutation({
     mutationFn: signIn,
-    onSuccess: () => navigate('/dashboard', { replace: true }),
   });
   const onSubmit = handleSubmit(data => {
     if (signInMutation.isPending) return;
@@ -34,7 +33,7 @@ export function SignInForm() {
           const errors = getServerValidationErrors(data);
           for (const [field, message] of errors) {
             if (field === 'root') {
-              toast(message, 'danger', 10000);
+              toast(message, 'danger', 5000);
             } else {
               setError(field as FieldPath<SignInRequest>, {
                 type: 'server',
@@ -43,6 +42,7 @@ export function SignInForm() {
             }
           }
         },
+        onSuccess: () => navigate('/dashboard', { replace: true }),
       }
     );
   });

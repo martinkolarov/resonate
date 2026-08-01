@@ -5,6 +5,7 @@ import type { DB } from '@/types/db.generated.types.js';
 import { logger } from '@/infrastructure/observability/logger.js';
 
 const { Pool } = pg;
+
 const dbLogger = logger.child({ component: 'database' });
 
 const pool = new Pool({

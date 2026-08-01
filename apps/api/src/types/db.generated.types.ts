@@ -18,6 +18,17 @@ export interface EmailVerifications {
   user_id: string;
 }
 
+export interface OutboxMessages {
+  available_at: Timestamp;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  last_error: string | null;
+  locked_until: Timestamp | null;
+  payload: string;
+  processed_at: Timestamp | null;
+  type: string;
+}
+
 export interface Sessions {
   created_at: Generated<Timestamp>;
   expires_at: Timestamp;
@@ -37,6 +48,7 @@ export interface Users {
 
 export interface DB {
   email_verifications: EmailVerifications;
+  outbox_messages: OutboxMessages;
   sessions: Sessions;
   users: Users;
 }

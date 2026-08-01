@@ -7,7 +7,7 @@ type ToastColor = 'danger' | 'default' | 'primary' | 'secondary' | 'success' | '
 type Toast = {
   id: string;
   content: string;
-  color: ToastColor;
+  color?: ToastColor;
 };
 
 type ToastContextValue = {
@@ -51,31 +51,38 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   function addToast(content: string, color: ToastColor, delayMs: number) {
     const id = crypto.randomUUID();
-    if (toastList.length > 4) {
-      console.log('Too much');
-    }
     const timer = setTimeout(() => {
       removeToast(id);
     }, delayMs);
+    timers.current.set(id, timer);
     setToastList(prev => [
-      ...prev,
+      ...prev.slice(-3),
       {
         id,
         content,
         color,
       },
     ]);
-    timers.current.set(id, timer);
   }
 
   useEffect(() => {
     const activeTimers = timers.current;
     return () => {
-      for (const [id] of activeTimers.entries()) {
-        removeToastTimer(id);
+      for (const timerId of activeTimers.values()) {
+        clearTimeout(timerId);
       }
     };
   }, []);
+
+  useEffect(() => {
+    const activeIds = new Set(toastList.map(toast => toast.id));
+    for (const [toastId, timerId] of timers.current.entries()) {
+      if (!activeIds.has(toastId)) {
+        clearTimeout(timerId);
+        timers.current.delete(toastId);
+      }
+    }
+  }, [toastList]);
 
   return (
     <ToastContext.Provider value={{ toast: addToast }}>

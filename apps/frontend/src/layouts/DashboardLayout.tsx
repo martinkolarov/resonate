@@ -51,6 +51,10 @@ export default function DashboardLayout() {
     return <Navigate to="/sign-in" replace />;
   }
 
+  if (!user.email_verified_at) {
+    console.log('Email not verified');
+  }
+
   return (
     <div className="flex h-dvh">
       <SidebarDrawer isOpen={isOpen} onOpenChange={onOpenChange}>

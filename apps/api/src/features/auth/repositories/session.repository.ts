@@ -4,16 +4,19 @@ import type { DB } from '@/types/db.generated.types.js';
 export class SessionRepository {
   constructor(private readonly db: Kysely<DB>) {}
 
-  async create({
-    userId,
-    hashedToken,
-    expiresAt,
-  }: {
-    userId: string;
-    hashedToken: string;
-    expiresAt: Date;
-  }): Promise<void> {
-    await this.db
+  async create(
+    {
+      userId,
+      hashedToken,
+      expiresAt,
+    }: {
+      userId: string;
+      hashedToken: string;
+      expiresAt: Date;
+    },
+    executor: Kysely<DB> = this.db
+  ): Promise<void> {
+    await executor
       .insertInto('sessions')
       .values({
         user_id: userId,
@@ -25,11 +28,13 @@ export class SessionRepository {
 
   async findUserByValidTokenHash(
     hashedToken: string
-  ): Promise<Pick<Selectable<DB['users']>, 'id' | 'email' | 'name'> | undefined> {
+  ): Promise<
+    Pick<Selectable<DB['users']>, 'id' | 'email' | 'name' | 'email_verified_at'> | undefined
+  > {
     return this.db
       .selectFrom('sessions')
       .innerJoin('users', 'users.id', 'sessions.user_id')
-      .select(['users.id', 'users.email', 'users.name'])
+      .select(['users.id', 'users.email', 'users.name', 'users.email_verified_at'])
       .where('sessions.hashed_token', '=', hashedToken)
       .where('sessions.expires_at', '>', new Date())
       .limit(1)

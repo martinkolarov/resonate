@@ -21,20 +21,21 @@ function closeServer() {
 }
 
 let isShuttingDown = false;
-async function shutdown() {
+async function shutdown(signal: NodeJS.Signals) {
   if (isShuttingDown) return;
   isShuttingDown = true;
+
+  logger.info({ signal }, 'Server shutting down');
+
   try {
-    logger.info('Server is shutting down');
     await closeServer();
     await db.destroy();
-    logger.info('Server shut down successfully');
-    process.exitCode = 0;
-  } catch (error) {
-    logger.error({ error }, 'Server failed to shut down');
-    process.exitCode = 1;
-  } finally {
     await Sentry.close(2_000);
+
+    logger.info('Server shutdown complete');
+  } catch (error) {
+    logger.error({ error }, 'Server shutdown failed');
+    process.exitCode = 1;
   }
 }
 

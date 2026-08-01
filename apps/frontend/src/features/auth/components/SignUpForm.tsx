@@ -9,9 +9,11 @@ import { signUp } from '@/features/auth/auth.api';
 import { getServerValidationErrors } from '@/lib/get-server-validation-errors';
 import { useToast } from '@/components/ToastProvider';
 import type { SignUpRequest } from '@resonate/contracts';
+import { useNavigate } from 'react-router';
 
 export function SignUpForm() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
@@ -36,7 +38,7 @@ export function SignUpForm() {
           const errors = getServerValidationErrors(data);
           for (const [field, message] of errors) {
             if (field === 'root') {
-              toast(message, 'danger', 10000);
+              toast(message, 'danger', 5000);
             } else {
               setError(field as FieldPath<SignUpRequest>, {
                 type: 'server',
@@ -45,6 +47,7 @@ export function SignUpForm() {
             }
           }
         },
+        onSuccess: () => navigate('/dashboard', { replace: true }),
       }
     );
   });

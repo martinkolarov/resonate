@@ -13,8 +13,11 @@ export class UserRepository {
       .executeTakeFirst();
   }
 
-  async create({ name, email, password }: { name: string; email: string; password: string }) {
-    return await this.db
+  async create(
+    { name, email, password }: { name: string; email: string; password: string },
+    executor: Kysely<DB> = this.db
+  ) {
+    return await executor
       .insertInto('users')
       .values({
         name,

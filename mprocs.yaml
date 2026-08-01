@@ -1,0 +1,7 @@
+procs:
+  frontend:
+    cmd: ['pnpm', '--filter', '@resonate/frontend', 'dev']
+  api:
+    cmd: ['pnpm', '--filter', '@resonate/api', 'dev:api']
+  worker:
+    cmd: ['pnpm', '--filter', '@resonate/api', 'dev:worker']

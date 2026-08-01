@@ -8,12 +8,15 @@ import {
 import type { SessionRepository } from '@/features/auth/repositories/session.repository.js';
 import type { UserRepository } from '@/features/auth/repositories/user.repository.js';
 import { EmailVerificationRepository } from '@/features/auth/repositories/email-verification.repository.js';
-import { EmailSender } from '@/ports.js';
 import {
   generateEmailVerificationToken,
   generateSessionToken,
   hashToken,
 } from '@/features/auth/lib/tokens.js';
+import { db } from '@/infrastructure/db.js';
+import type { Kysely } from 'kysely';
+import type { DB } from '@/types/db.generated.types.js';
+import { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -22,37 +25,39 @@ export class AuthService {
     private readonly users: UserRepository,
     private readonly sessions: SessionRepository,
     private readonly emailVerifications: EmailVerificationRepository,
-    private readonly emailSender: EmailSender
+    private readonly outboxMessages: OutboxMessageRepository
   ) {}
 
   async register({ name, email, password }: SignUpRequest) {
     const salt = generateSalt();
     const hashedPassword = await hashPassword(password, salt);
 
-    const user = await this.users.create({
-      name,
-      email,
-      password: `${hashedPassword.toString('base64')}:${salt.toString('base64')}`,
+    return db.transaction().execute(async trx => {
+      const user = await this.users.create(
+        {
+          name,
+          email,
+          password: `${hashedPassword.toString('base64')}:${salt.toString('base64')}`,
+        },
+        trx
+      );
+
+      if (!user) {
+        throw new ApiError('EMAIL_ALREADY_REGISTERED');
+      }
+
+      const emailVerificationToken = generateEmailVerificationToken();
+
+      await this.emailVerifications.upsert(user.id, hashToken(emailVerificationToken), trx);
+
+      await this.outboxMessages.enqueue(trx, 'send-email', {
+        to: user.email,
+        subject: 'Verify your email',
+        html: `<h1>${emailVerificationToken}</h1>`,
+      });
+
+      return this.startSession(user.id, trx);
     });
-
-    if (!user) {
-      throw new ApiError('EMAIL_ALREADY_REGISTERED');
-    }
-
-    await this.sendEmailVerification(user);
-
-    const { token, expiresAt } = await this.startSession(user.id);
-
-    return {
-      token,
-      expiresAt,
-    };
-  }
-
-  private async sendEmailVerification(user: { id: string; name: string; email: string }) {
-    const token = generateEmailVerificationToken();
-    await this.emailVerifications.upsert(user.id, hashToken(token));
-    await this.emailSender.send(user.email, 'Hello there', `<h1>${token}</h1>`);
   }
 
   async login({ email, password }: SignInRequest): Promise<{ token: string; expiresAt: Date }> {
@@ -67,21 +72,22 @@ export class AuthService {
       throw new ApiError('INVALID_CREDENTIALS');
     }
 
-    const { token, expiresAt } = await this.startSession(user.id);
-
-    return { token, expiresAt };
+    return this.startSession(user.id);
   }
 
-  private async startSession(userId: string) {
+  private async startSession(userId: string, executor?: Kysely<DB>) {
     const token = generateSessionToken();
     const hashedToken = hashToken(token);
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
-    await this.sessions.create({
-      userId,
-      hashedToken,
-      expiresAt,
-    });
+    await this.sessions.create(
+      {
+        userId,
+        hashedToken,
+        expiresAt,
+      },
+      executor
+    );
 
     return {
       token,
