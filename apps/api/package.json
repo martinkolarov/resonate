@@ -20,6 +20,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1104.0",
+    "@aws-sdk/s3-request-presigner": "^3.1104.0",
     "@resonate/contracts": "workspace:*",
     "@sentry/node": "^10.68.0",
     "cookie": "^2.0.1",

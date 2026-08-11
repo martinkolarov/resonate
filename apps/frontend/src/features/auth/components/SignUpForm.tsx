@@ -4,16 +4,17 @@ import { useForm, type FieldPath } from 'react-hook-form';
 import { Input } from '@/components/Input';
 import { PasswordInput } from '@/components/PasswordInput';
 import { signUpFormSchema, type SignUpFormValues } from '@/features/auth/auth.schemas';
-import { useMutation } from '@tanstack/react-query';
-import { signUp } from '@/features/auth/auth.api';
 import { getServerValidationErrors } from '@/lib/get-server-validation-errors';
 import { useToast } from '@/components/ToastProvider';
 import type { SignUpRequest } from '@resonate/contracts';
-import { useNavigate } from 'react-router';
 
-export function SignUpForm() {
+type SignUpFormProps = {
+  isSubmitting: boolean;
+  onSubmit: (data: SignUpRequest) => Promise<void>;
+};
+
+export function SignUpForm({ isSubmitting, onSubmit }: SignUpFormProps) {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
@@ -23,37 +24,30 @@ export function SignUpForm() {
     resolver: zodResolver(signUpFormSchema),
     defaultValues: { termsAccepted: false },
   });
-  const signUpMutation = useMutation({
-    mutationFn: signUp,
-  });
-  const onSubmit = handleSubmit(data => {
-    if (signUpMutation.isPending) return;
+  const handleValidSubmit = handleSubmit(async data => {
+    if (isSubmitting) return;
 
     const { email, name, password } = data;
 
-    signUpMutation.mutate(
-      { email, name, password },
-      {
-        onError: data => {
-          const errors = getServerValidationErrors(data);
-          for (const [field, message] of errors) {
-            if (field === 'root') {
-              toast(message, 'danger', 5000);
-            } else {
-              setError(field as FieldPath<SignUpRequest>, {
-                type: 'server',
-                message,
-              });
-            }
-          }
-        },
-        onSuccess: () => navigate('/dashboard', { replace: true }),
+    try {
+      await onSubmit({ email, name, password });
+    } catch (error: unknown) {
+      const errors = getServerValidationErrors(error);
+      for (const [field, message] of errors) {
+        if (field === 'root') {
+          toast(message, 'danger', 5000);
+        } else {
+          setError(field as FieldPath<SignUpRequest>, {
+            type: 'server',
+            message,
+          });
+        }
       }
-    );
+    }
   });
 
   return (
-    <form noValidate className="flex flex-col gap-3" onSubmit={onSubmit}>
+    <form noValidate className="flex flex-col gap-3" onSubmit={handleValidSubmit}>
       <Input
         {...register('email')}
         isRequired
@@ -111,8 +105,8 @@ export function SignUpForm() {
       <Button
         color="primary"
         type="submit"
-        isDisabled={signUpMutation.isPending}
-        isLoading={signUpMutation.isPending}
+        isDisabled={isSubmitting}
+        isLoading={isSubmitting}
       >
         Sign Up
       </Button>

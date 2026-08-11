@@ -1,33 +1,22 @@
 import express, { type Express } from 'express';
-import { AuthService } from '@/features/auth/auth.service.js';
-import { createAuthRouter } from '@/features/auth/auth.routes.js';
-import { EmailVerificationRepository } from '@/features/auth/repositories/email-verification.repository.js';
-import { SessionRepository } from '@/features/auth/repositories/session.repository.js';
-import { UserRepository } from '@/features/auth/repositories/user.repository.js';
-import { db } from '@/infrastructure/db.js';
+import { createAuthModule } from '@/features/auth/auth.module.js';
+import { createRecordingModule } from '@/features/recordings/recording.module.js';
+import { createInfrastructure } from '@/infrastructure/create-infrastructure.js';
 import { ApiError, ValidationError } from '@/lib/errors.js';
 import * as Sentry from '@sentry/node';
 import { errorHandler } from '@/middleware/error-handler.js';
-import { OutboxMessageRepository } from './infrastructure/outbox/outbox-message.repository.js';
 
 export function createApp(): Express {
-  const userRepository = new UserRepository(db);
-  const sessionRepository = new SessionRepository(db);
-  const emailVerificationRepository = new EmailVerificationRepository(db);
-  const outboxMessageRepository = new OutboxMessageRepository(db);
-
-  const authService = new AuthService(
-    userRepository,
-    sessionRepository,
-    emailVerificationRepository,
-    outboxMessageRepository
-  );
-  const authRouter = createAuthRouter(authService);
+  const infrastructure = createInfrastructure();
+  const auth = createAuthModule(infrastructure);
+  const recordings = createRecordingModule(infrastructure);
 
   const app = express();
 
   app.use(express.json());
-  app.use('/auth', authRouter);
+
+  app.use('/auth', auth.router);
+  app.use('/recordings', auth.requireSession, recordings.router);
 
   Sentry.setupExpressErrorHandler(app, {
     shouldHandleError: error => {

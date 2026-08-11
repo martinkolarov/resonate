@@ -61,7 +61,7 @@ export class OutboxMessageRepository {
       })
       .where('id', '=', id)
       .where('processed_at', 'is', null)
-      .executeTakeFirstOrThrow();
+      .execute();
   }
 
   async scheduleRetry(id: string, availableAt: Date, error: Error) {
@@ -78,6 +78,6 @@ export class OutboxMessageRepository {
       })
       .where('id', '=', id)
       .where('processed_at', 'is', null)
-      .executeTakeFirstOrThrow();
+      .execute();
   }
 }

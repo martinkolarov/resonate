@@ -25,10 +25,10 @@ export async function signIn(data: SignInRequest): Promise<void> {
 
 export async function getSession(): Promise<AuthSessionResponse | null> {
   try {
-    const body = await request('/api/auth/session', {
+    const response = await request('/api/auth/session', {
       credentials: 'include',
     });
-    return authSessionResponseSchema.parse(body);
+    return authSessionResponseSchema.parse(response);
   } catch (error) {
     if (error instanceof HttpError && error.status === 401) {
       return null;

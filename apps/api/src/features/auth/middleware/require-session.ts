@@ -4,7 +4,7 @@ import type { AuthService } from '@/features/auth/auth.service.js';
 import { ApiError } from '@/lib/errors.js';
 
 export function createRequireSession(
-  authService: Pick<AuthService, 'authenticateSession'>
+  authService: Pick<AuthService, 'authenticateWithSessionToken'>
 ): RequestHandler {
   return async (req, res, next) => {
     try {
@@ -15,7 +15,7 @@ export function createRequireSession(
         throw new ApiError('UNAUTHENTICATED');
       }
 
-      res.locals.user = await authService.authenticateSession(token);
+      res.locals.user = await authService.authenticateWithSessionToken(token);
       next();
     } catch (error) {
       next(error);

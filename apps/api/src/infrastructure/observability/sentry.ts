@@ -6,7 +6,7 @@ const sentryDsn = env.SENTRY_DSN;
 if (sentryDsn) {
   Sentry.init({
     dsn: env.SENTRY_DSN,
-    debug: true,
+    debug: false,
     enableLogs: false,
     integrations: [
       Sentry.pinoIntegration({

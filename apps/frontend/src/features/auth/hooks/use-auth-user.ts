@@ -2,15 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { getSession } from '@/features/auth/auth.api';
 
 export function useAuthUser() {
-  const query = useQuery({
+  const { data, isPending, error } = useQuery({
     queryKey: ['session'],
     queryFn: getSession,
     retry: false,
   });
 
   return {
-    user: query.data?.user ?? null,
-    isPending: query.isPending,
-    error: query.error,
+    user: data?.user ?? null,
+    isPending: isPending,
+    error: error,
   };
 }

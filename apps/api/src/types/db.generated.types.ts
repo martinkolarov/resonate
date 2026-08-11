@@ -9,6 +9,20 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
+
+export type Json = JsonValue;
+
+export type JsonArray = JsonValue[];
+
+export type JsonObject = {
+  [x: string]: JsonValue | undefined;
+};
+
+export type JsonPrimitive = boolean | number | string | null;
+
+export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
+
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface EmailVerifications {
@@ -27,6 +41,20 @@ export interface OutboxMessages {
   payload: string;
   processed_at: Timestamp | null;
   type: string;
+}
+
+export interface Recordings {
+  created_at: Generated<Timestamp>;
+  duration_ms: number | null;
+  file_name: string | null;
+  id: Generated<string>;
+  metadata: Generated<Json>;
+  mime_type: string | null;
+  object_key: string;
+  provider: string;
+  size_bytes: Int8 | null;
+  status: Generated<string>;
+  user_id: string;
 }
 
 export interface Sessions {
@@ -49,6 +77,7 @@ export interface Users {
 export interface DB {
   email_verifications: EmailVerifications;
   outbox_messages: OutboxMessages;
+  recordings: Recordings;
   sessions: Sessions;
   users: Users;
 }

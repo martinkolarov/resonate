@@ -13,15 +13,16 @@ import {
   generateSessionToken,
   hashToken,
 } from '@/features/auth/lib/tokens.js';
-import { db } from '@/infrastructure/db.js';
 import type { Kysely } from 'kysely';
 import type { DB } from '@/types/db.generated.types.js';
 import { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
+import { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
 export class AuthService {
   constructor(
+    private readonly transactionRunner: TransactionRunner,
     private readonly users: UserRepository,
     private readonly sessions: SessionRepository,
     private readonly emailVerifications: EmailVerificationRepository,
@@ -32,7 +33,7 @@ export class AuthService {
     const salt = generateSalt();
     const hashedPassword = await hashPassword(password, salt);
 
-    return db.transaction().execute(async trx => {
+    return this.transactionRunner.run(async trx => {
       const user = await this.users.create(
         {
           name,
@@ -95,7 +96,7 @@ export class AuthService {
     };
   }
 
-  async authenticateSession(token: string) {
+  async authenticateWithSessionToken(token: string) {
     const user = await this.sessions.findUserByValidTokenHash(hashToken(token));
 
     if (!user) {
