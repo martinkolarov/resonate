@@ -3,9 +3,14 @@ import { RecordingService } from '@/features/recordings/recording.service.js';
 import { RecordingRepository } from '@/features/recordings/repositories/recording.repository.js';
 import type { Infrastructure } from '@/infrastructure/create-infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 
-type RecordingModuleDependencies = Pick<Infrastructure, 'db' | 'transactionRunner'>;
+type RecordingModuleDependencies = Pick<
+  Infrastructure,
+  'db' | 'transactionRunner' | 'outboxMessages'
+> & {
+  requireSession: RequestHandler;
+};
 
 type RecordingModule = {
   router: Router;
@@ -14,10 +19,14 @@ type RecordingModule = {
 export function createRecordingModule({
   db,
   transactionRunner,
+  outboxMessages,
+  requireSession,
 }: RecordingModuleDependencies): RecordingModule {
   const recordings = new RecordingRepository(db);
-  const service = new RecordingService(transactionRunner, recordings);
+  const service = new RecordingService(transactionRunner, outboxMessages, recordings);
   const router = Router();
+
+  router.use(requireSession);
 
   router.get('/', async (_req, res) => {
     const recordings = await service.listRecordingsByUserId(res.locals.user.id);
@@ -56,10 +65,6 @@ export function createRecordingModule({
     });
   });
 
-  // we need to make this atomic. will do the actions below in one transaction
-  // 1. SELECT recording
-  // 2. UPDATE ROW, SET IT'S STATUS TO UPLOADED
-  // 3. PUBLISH AN EVENT TO THE OUTBOX TO PICK IT UP (WHEN IT GETS PICKED UP WILL GET IT'S STATUS SET TO PROCESSING)
   router.post('/:id/complete-upload', async (req, res) => {
     const { id } = req.params;
     await service.completeUpload(id);

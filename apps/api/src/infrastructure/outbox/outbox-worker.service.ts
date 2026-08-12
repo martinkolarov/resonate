@@ -25,7 +25,11 @@ export class OutboxWorkerService {
           await this.outboxMessages.markProcessed(id);
         } catch (error: unknown) {
           if (error instanceof Error) {
-            await this.outboxMessages.scheduleRetry(id, new Date(Date.now() + 1000 * 120), error);
+            await this.outboxMessages.scheduleRetry(
+              id,
+              new Date(Date.now() + 1000 * 60 * 2),
+              error
+            );
           }
         }
       }

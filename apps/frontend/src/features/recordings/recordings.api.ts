@@ -5,9 +5,10 @@ import {
   type CreateRecordingBody,
 } from '@resonate/contracts';
 
-export async function getRecordings() {
+export async function getRecordings({ signal }: { signal?: AbortSignal }) {
   const response = await request('/api/recordings', {
     method: 'GET',
+    signal,
   });
   return listRecordingsResponseSchema.parse(response);
 }
@@ -22,5 +23,7 @@ export async function createRecording(body: CreateRecordingBody) {
 }
 
 export async function completeUpload(recordingId: string) {
-  await request(`/api/recordings/${recordingId}/complete-upload`);
+  await request(`/api/recordings/${recordingId}/complete-upload`, {
+    method: 'POST',
+  });
 }

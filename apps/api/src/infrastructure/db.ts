@@ -13,7 +13,7 @@ const pool = new Pool({
 });
 
 pool.on('error', error => {
-  dbLogger.error({ error }, 'Unexpected PostgreSQL pool error');
+  dbLogger.error({ err: error }, 'Unexpected PostgreSQL pool error');
 });
 
 export const db = new Kysely<DB>({

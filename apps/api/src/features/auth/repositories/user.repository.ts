@@ -1,4 +1,4 @@
-import type { Kysely, Selectable } from 'kysely';
+import type { Kysely, Selectable, Transaction } from 'kysely';
 import type { DB } from '@/types/db.generated.types.js';
 
 export class UserRepository {
@@ -15,9 +15,9 @@ export class UserRepository {
 
   async create(
     { name, email, password }: { name: string; email: string; password: string },
-    executor: Kysely<DB> = this.db
+    trx?: Transaction<DB>
   ) {
-    return await executor
+    return await (trx ?? this.db)
       .insertInto('users')
       .values({
         name,

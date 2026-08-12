@@ -23,10 +23,15 @@ export async function signIn(data: SignInRequest): Promise<void> {
   });
 }
 
-export async function getSession(): Promise<AuthSessionResponse | null> {
+export async function getSession({
+  signal,
+}: {
+  signal?: AbortSignal;
+}): Promise<AuthSessionResponse | null> {
   try {
     const response = await request('/api/auth/session', {
       credentials: 'include',
+      signal,
     });
     return authSessionResponseSchema.parse(response);
   } catch (error) {

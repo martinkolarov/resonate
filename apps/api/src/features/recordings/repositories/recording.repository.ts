@@ -1,5 +1,5 @@
 import { DB } from '@/types/db.generated.types.js';
-import { Kysely } from 'kysely';
+import { Kysely, Transaction } from 'kysely';
 
 export class RecordingRepository {
   constructor(private readonly db: Kysely<DB>) {}
@@ -33,6 +33,16 @@ export class RecordingRepository {
       .selectAll()
       .where('id', '=', id)
       .limit(1)
+      .executeTakeFirst();
+  }
+
+  async markUploaded(id: string, trx?: Transaction<DB>) {
+    return await (trx ?? this.db)
+      .updateTable('recordings')
+      .set({ status: 'uploaded' })
+      .where('status', '=', 'uploading')
+      .where('id', '=', id)
+      .returning(['id'])
       .executeTakeFirst();
   }
 

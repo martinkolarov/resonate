@@ -9,14 +9,19 @@ import { errorHandler } from '@/middleware/error-handler.js';
 export function createApp(): Express {
   const infrastructure = createInfrastructure();
   const auth = createAuthModule(infrastructure);
-  const recordings = createRecordingModule(infrastructure);
+  const recordings = createRecordingModule({
+    db: infrastructure.db,
+    transactionRunner: infrastructure.transactionRunner,
+    outboxMessages: infrastructure.outboxMessages,
+    requireSession: auth.requireSession,
+  });
 
   const app = express();
 
   app.use(express.json());
 
   app.use('/auth', auth.router);
-  app.use('/recordings', auth.requireSession, recordings.router);
+  app.use('/recordings', recordings.router);
 
   Sentry.setupExpressErrorHandler(app, {
     shouldHandleError: error => {

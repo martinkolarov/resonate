@@ -61,7 +61,7 @@ async function shutdown(signal: NodeJS.Signals) {
 
     workerLogger.info('Worker shutdown complete');
   } catch (error) {
-    workerLogger.error({ error }, 'Worker failed to shut down');
+    workerLogger.error({ err: error }, 'Worker failed to shut down');
     process.exitCode = 1;
   }
 }

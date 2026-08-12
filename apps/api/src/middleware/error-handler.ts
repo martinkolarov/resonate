@@ -15,7 +15,7 @@ export function errorHandler(error: unknown, req: Request, res: Response, next: 
 
   httpLogger.error(
     {
-      error,
+      err: error,
       request: {
         method: req.method,
         path: req.path,

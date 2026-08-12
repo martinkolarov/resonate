@@ -13,7 +13,7 @@ import {
   generateSessionToken,
   hashToken,
 } from '@/features/auth/lib/tokens.js';
-import type { Kysely } from 'kysely';
+import type { Transaction } from 'kysely';
 import type { DB } from '@/types/db.generated.types.js';
 import { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
 import { TransactionRunner } from '@/infrastructure/transaction-runner.js';
@@ -51,11 +51,15 @@ export class AuthService {
 
       await this.emailVerifications.upsert(user.id, hashToken(emailVerificationToken), trx);
 
-      await this.outboxMessages.enqueue(trx, 'send-email', {
-        to: user.email,
-        subject: 'Verify your email',
-        html: `<h1>${emailVerificationToken}</h1>`,
-      });
+      await this.outboxMessages.enqueue(
+        'send-email',
+        {
+          to: user.email,
+          subject: 'Verify your email',
+          html: `<h1>${emailVerificationToken}</h1>`,
+        },
+        trx
+      );
 
       return this.startSession(user.id, trx);
     });
@@ -76,7 +80,7 @@ export class AuthService {
     return this.startSession(user.id);
   }
 
-  private async startSession(userId: string, executor?: Kysely<DB>) {
+  private async startSession(userId: string, trx?: Transaction<DB>) {
     const token = generateSessionToken();
     const hashedToken = hashToken(token);
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
@@ -87,7 +91,7 @@ export class AuthService {
         hashedToken,
         expiresAt,
       },
-      executor
+      trx
     );
 
     return {

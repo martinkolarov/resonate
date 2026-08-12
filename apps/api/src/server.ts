@@ -34,7 +34,7 @@ async function shutdown(signal: NodeJS.Signals) {
 
     logger.info('Server shutdown complete');
   } catch (error) {
-    logger.error({ error }, 'Server shutdown failed');
+    logger.error({ err: error }, 'Server shutdown failed');
     process.exitCode = 1;
   }
 }

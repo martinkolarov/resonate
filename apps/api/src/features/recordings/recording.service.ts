@@ -3,6 +3,7 @@ import { RecordingRepository } from './repositories/recording.repository.js';
 import env from '@/env.js';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { TransactionRunner } from '@/infrastructure/transaction-runner.js';
+import { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
 
 const client = new S3Client({
   region: env.AWS_REGION,
@@ -12,6 +13,7 @@ const client = new S3Client({
 export class RecordingService {
   constructor(
     private readonly transactionRunner: TransactionRunner,
+    private readonly outboxMessages: OutboxMessageRepository,
     private readonly recordings: RecordingRepository
   ) {}
 
@@ -61,6 +63,17 @@ export class RecordingService {
   }
 
   async completeUpload(id: string) {
-    return this.transactionRunner.run(async trx => {});
+    return this.transactionRunner.run(async trx => {
+      const recording = await this.recordings.markUploaded(id, trx);
+      if (recording) {
+        await this.outboxMessages.enqueue(
+          'recording-uploaded',
+          {
+            id,
+          },
+          trx
+        );
+      }
+    });
   }
 }

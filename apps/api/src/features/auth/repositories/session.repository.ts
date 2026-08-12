@@ -1,4 +1,4 @@
-import type { Kysely, Selectable } from 'kysely';
+import type { Kysely, Selectable, Transaction } from 'kysely';
 import type { DB } from '@/types/db.generated.types.js';
 
 export class SessionRepository {
@@ -14,9 +14,9 @@ export class SessionRepository {
       hashedToken: string;
       expiresAt: Date;
     },
-    executor: Kysely<DB> = this.db
+    trx?: Transaction<DB>
   ): Promise<void> {
-    await executor
+    await (trx ?? this.db)
       .insertInto('sessions')
       .values({
         user_id: userId,

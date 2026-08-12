@@ -40,8 +40,8 @@ export class OutboxMessageRepository {
     });
   }
 
-  async enqueue(trx: Transaction<DB>, type: string, payload: unknown) {
-    await trx
+  async enqueue(type: string, payload: unknown, trx?: Transaction<DB>) {
+    await (trx ?? this.db)
       .insertInto('outbox_messages')
       .values({
         type: type,
