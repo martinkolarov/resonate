@@ -1,7 +1,7 @@
 import { createRecordingBodySchema } from '@resonate/contracts';
 import { createRecordingService } from '@/features/recordings/recording.service.js';
 import { createRecordingRepository } from '@/features/recordings/repositories/recording.repository.js';
-import type { Infrastructure } from '@/infrastructure/create-infrastructure.js';
+import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
 import { Router, type RequestHandler } from 'express';
 

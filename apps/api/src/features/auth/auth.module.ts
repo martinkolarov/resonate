@@ -5,7 +5,7 @@ import { createRequireSession } from '@/features/auth/middleware/require-session
 import { createEmailVerificationRepository } from '@/features/auth/repositories/email-verification.repository.js';
 import { createSessionRepository } from '@/features/auth/repositories/session.repository.js';
 import { createUserRepository } from '@/features/auth/repositories/user.repository.js';
-import type { Infrastructure } from '@/infrastructure/create-infrastructure.js';
+import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
 
 type AuthModuleDependencies = Pick<Infrastructure, 'db' | 'outboxMessages' | 'transactionRunner'>;

@@ -1,7 +1,7 @@
 import express, { type Express } from 'express';
 import { createAuthModule } from '@/features/auth/auth.module.js';
 import { createRecordingModule } from '@/features/recordings/recording.module.js';
-import { createInfrastructure } from '@/infrastructure/create-infrastructure.js';
+import { createInfrastructure } from '@/infrastructure/infrastructure.js';
 import { ApiError, ValidationError } from '@/lib/errors.js';
 import * as Sentry from '@sentry/node';
 import { errorHandler } from '@/middleware/error-handler.js';
