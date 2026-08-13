@@ -3,7 +3,7 @@ import { db } from './infrastructure/db.js';
 import { createResendEmailSender } from './infrastructure/email/resend-email-sender.js';
 import { logger } from './infrastructure/observability/logger.js';
 import { createOutboxMessageRepository } from './infrastructure/outbox/outbox-message.repository.js';
-import { createOutboxWorkerService } from './infrastructure/outbox/outbox-worker.service.js';
+import { createOutboxWorker } from './infrastructure/outbox/outbox-worker.js';
 import z from 'zod';
 import * as Sentry from '@sentry/node';
 
@@ -24,7 +24,7 @@ type SendEmailMessage = z.infer<typeof sendEmailMessageSchema>;
 const messageSchema = z.discriminatedUnion('type', [sendEmailMessageSchema]);
 
 const outboxMessages = createOutboxMessageRepository(db);
-const outboxWorkerService = createOutboxWorkerService(outboxMessages);
+const outboxWorker = createOutboxWorker(outboxMessages);
 
 const emailSender = createResendEmailSender(env.RESEND_API_KEY);
 
@@ -69,4 +69,4 @@ async function shutdown(signal: NodeJS.Signals) {
 process.once('SIGTERM', shutdown);
 process.once('SIGINT', shutdown);
 
-await outboxWorkerService.work(dispatch, abortController.signal);
+await outboxWorker.work(dispatch, abortController.signal);

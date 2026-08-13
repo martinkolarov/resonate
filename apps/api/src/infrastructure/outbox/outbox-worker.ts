@@ -3,7 +3,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 export type Dispatch = (message: unknown) => Promise<void>;
 
-export function createOutboxWorkerService(outboxMessages: OutboxMessageRepository) {
+export function createOutboxWorker(outboxMessages: OutboxMessageRepository) {
   return {
     async work(dispatch: Dispatch, signal: AbortSignal) {
       while (!signal.aborted) {
@@ -33,4 +33,4 @@ export function createOutboxWorkerService(outboxMessages: OutboxMessageRepositor
   };
 }
 
-export type OutboxWorkerService = ReturnType<typeof createOutboxWorkerService>;
+export type OutboxWorker = ReturnType<typeof createOutboxWorker>;

@@ -1,11 +1,11 @@
-import type { EmailSender } from '@/ports.js';
+import type { EmailSender } from './email-sender.js';
 import { Resend } from 'resend';
 
-export function createResendEmailSender(apiKey: string) {
+export function createResendEmailSender(apiKey: string): EmailSender {
   const client = new Resend(apiKey);
 
   return {
-    async send(to: string, subject: string, html: string, idempotencyKey?: string): Promise<void> {
+    async send(to, subject, html, idempotencyKey) {
       const { error } = await client.emails.send(
         {
           from: 'Resonate <onboarding@resend.dev>',
@@ -21,7 +21,7 @@ export function createResendEmailSender(apiKey: string) {
         throw error;
       }
     },
-  } satisfies EmailSender;
+  };
 }
 
 export type ResendEmailSender = ReturnType<typeof createResendEmailSender>;
