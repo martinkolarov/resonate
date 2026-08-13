@@ -1,6 +1,6 @@
 import { createRecordingBodySchema } from '@resonate/contracts';
-import { RecordingService } from '@/features/recordings/recording.service.js';
-import { RecordingRepository } from '@/features/recordings/repositories/recording.repository.js';
+import { createRecordingService } from '@/features/recordings/recording.service.js';
+import { createRecordingRepository } from '@/features/recordings/repositories/recording.repository.js';
 import type { Infrastructure } from '@/infrastructure/create-infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
 import { Router, type RequestHandler } from 'express';
@@ -22,8 +22,8 @@ export function createRecordingModule({
   outboxMessages,
   requireSession,
 }: RecordingModuleDependencies): RecordingModule {
-  const recordings = new RecordingRepository(db);
-  const service = new RecordingService(transactionRunner, outboxMessages, recordings);
+  const recordings = createRecordingRepository(db);
+  const service = createRecordingService({ transactionRunner, outboxMessages, recordings });
   const router = Router();
 
   router.use(requireSession);

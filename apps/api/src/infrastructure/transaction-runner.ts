@@ -5,10 +5,12 @@ export interface TransactionRunner {
   run<T>(callback: (trx: Transaction<DB>) => Promise<T>): Promise<T>;
 }
 
-export class KyselyTransactionRunner implements TransactionRunner {
-  constructor(private readonly db: Kysely<DB>) {}
-
-  async run<T>(callback: (trx: Transaction<DB>) => Promise<T>) {
-    return await this.db.transaction().execute(callback);
-  }
+export function createTransactionRunner(db: Kysely<DB>): TransactionRunner {
+  return {
+    async run<T>(callback: (trx: Transaction<DB>) => Promise<T>) {
+      return await db.transaction().execute(callback);
+    },
+  };
 }
+
+export type KyselyTransactionRunner = ReturnType<typeof createTransactionRunner>;

@@ -1,9 +1,9 @@
 import env from './env.js';
 import { db } from './infrastructure/db.js';
-import { ResendEmailSender } from './infrastructure/email/resend-email-sender.js';
+import { createResendEmailSender } from './infrastructure/email/resend-email-sender.js';
 import { logger } from './infrastructure/observability/logger.js';
-import { OutboxMessageRepository } from './infrastructure/outbox/outbox-message.repository.js';
-import { OutboxWorkerService } from './infrastructure/outbox/outbox-worker.service.js';
+import { createOutboxMessageRepository } from './infrastructure/outbox/outbox-message.repository.js';
+import { createOutboxWorkerService } from './infrastructure/outbox/outbox-worker.service.js';
 import z from 'zod';
 import * as Sentry from '@sentry/node';
 
@@ -23,10 +23,10 @@ type SendEmailMessage = z.infer<typeof sendEmailMessageSchema>;
 
 const messageSchema = z.discriminatedUnion('type', [sendEmailMessageSchema]);
 
-const outboxMessages = new OutboxMessageRepository(db);
-const outboxWorkerService = new OutboxWorkerService(outboxMessages);
+const outboxMessages = createOutboxMessageRepository(db);
+const outboxWorkerService = createOutboxWorkerService(outboxMessages);
 
-const emailSender = new ResendEmailSender(env.RESEND_API_KEY);
+const emailSender = createResendEmailSender(env.RESEND_API_KEY);
 
 async function handleSendEmail(message: SendEmailMessage) {
   await emailSender.send(

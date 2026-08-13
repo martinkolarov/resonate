@@ -7,7 +7,7 @@ import {
 } from '@/features/auth/lib/password-hashing.js';
 import type { SessionRepository } from '@/features/auth/repositories/session.repository.js';
 import type { UserRepository } from '@/features/auth/repositories/user.repository.js';
-import { EmailVerificationRepository } from '@/features/auth/repositories/email-verification.repository.js';
+import type { EmailVerificationRepository } from '@/features/auth/repositories/email-verification.repository.js';
 import {
   generateEmailVerificationToken,
   generateSessionToken,
@@ -15,77 +15,32 @@ import {
 } from '@/features/auth/lib/tokens.js';
 import type { Transaction } from 'kysely';
 import type { DB } from '@/types/db.generated.types.js';
-import { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
-import { TransactionRunner } from '@/infrastructure/transaction-runner.js';
+import type { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
+import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
-export class AuthService {
-  constructor(
-    private readonly transactionRunner: TransactionRunner,
-    private readonly users: UserRepository,
-    private readonly sessions: SessionRepository,
-    private readonly emailVerifications: EmailVerificationRepository,
-    private readonly outboxMessages: OutboxMessageRepository
-  ) {}
+type AuthServiceDependencies = {
+  transactionRunner: TransactionRunner;
+  users: UserRepository;
+  sessions: SessionRepository;
+  emailVerifications: EmailVerificationRepository;
+  outboxMessages: OutboxMessageRepository;
+};
 
-  async register({ name, email, password }: SignUpRequest) {
-    const salt = generateSalt();
-    const hashedPassword = await hashPassword(password, salt);
-
-    return this.transactionRunner.run(async trx => {
-      const user = await this.users.create(
-        {
-          name,
-          email,
-          password: `${hashedPassword.toString('base64')}:${salt.toString('base64')}`,
-        },
-        trx
-      );
-
-      if (!user) {
-        throw new ApiError('EMAIL_ALREADY_REGISTERED');
-      }
-
-      const emailVerificationToken = generateEmailVerificationToken();
-
-      await this.emailVerifications.upsert(user.id, hashToken(emailVerificationToken), trx);
-
-      await this.outboxMessages.enqueue(
-        'send-email',
-        {
-          to: user.email,
-          subject: 'Verify your email',
-          html: `<h1>${emailVerificationToken}</h1>`,
-        },
-        trx
-      );
-
-      return this.startSession(user.id, trx);
-    });
-  }
-
-  async login({ email, password }: SignInRequest): Promise<{ token: string; expiresAt: Date }> {
-    const user = await this.users.findByEmail(email);
-
-    if (!user) {
-      throw new ApiError('INVALID_CREDENTIALS');
-    }
-
-    const isValidPassword = await verifyPassword(password, user.password);
-    if (!isValidPassword) {
-      throw new ApiError('INVALID_CREDENTIALS');
-    }
-
-    return this.startSession(user.id);
-  }
-
-  private async startSession(userId: string, trx?: Transaction<DB>) {
+export function createAuthService({
+  transactionRunner,
+  users,
+  sessions,
+  emailVerifications,
+  outboxMessages,
+}: AuthServiceDependencies) {
+  async function startSession(userId: string, trx?: Transaction<DB>) {
     const token = generateSessionToken();
     const hashedToken = hashToken(token);
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
-    await this.sessions.create(
+    await sessions.create(
       {
         userId,
         hashedToken,
@@ -100,13 +55,68 @@ export class AuthService {
     };
   }
 
-  async authenticateWithSessionToken(token: string) {
-    const user = await this.sessions.findUserByValidTokenHash(hashToken(token));
+  return {
+    async register({ name, email, password }: SignUpRequest) {
+      const salt = generateSalt();
+      const hashedPassword = await hashPassword(password, salt);
 
-    if (!user) {
-      throw new ApiError('UNAUTHENTICATED');
-    }
+      return transactionRunner.run(async trx => {
+        const user = await users.create(
+          {
+            name,
+            email,
+            password: `${hashedPassword.toString('base64')}:${salt.toString('base64')}`,
+          },
+          trx
+        );
 
-    return user;
-  }
+        if (!user) {
+          throw new ApiError('EMAIL_ALREADY_REGISTERED');
+        }
+
+        const emailVerificationToken = generateEmailVerificationToken();
+
+        await emailVerifications.upsert(user.id, hashToken(emailVerificationToken), trx);
+
+        await outboxMessages.enqueue(
+          'send-email',
+          {
+            to: user.email,
+            subject: 'Verify your email',
+            html: `<h1>${emailVerificationToken}</h1>`,
+          },
+          trx
+        );
+
+        return startSession(user.id, trx);
+      });
+    },
+
+    async login({ email, password }: SignInRequest): Promise<{ token: string; expiresAt: Date }> {
+      const user = await users.findByEmail(email);
+
+      if (!user) {
+        throw new ApiError('INVALID_CREDENTIALS');
+      }
+
+      const isValidPassword = await verifyPassword(password, user.password);
+      if (!isValidPassword) {
+        throw new ApiError('INVALID_CREDENTIALS');
+      }
+
+      return startSession(user.id);
+    },
+
+    async authenticateWithSessionToken(token: string) {
+      const user = await sessions.findUserByValidTokenHash(hashToken(token));
+
+      if (!user) {
+        throw new ApiError('UNAUTHENTICATED');
+      }
+
+      return user;
+    },
+  };
 }
+
+export type AuthService = ReturnType<typeof createAuthService>;
