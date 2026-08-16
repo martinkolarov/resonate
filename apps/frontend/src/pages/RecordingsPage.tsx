@@ -10,13 +10,6 @@ import { fetchRetry } from '@/lib/fetch-retry';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
-async function uploadToTarget(uploadTarget: { url: string; method: string }, file: File) {
-  return await fetch(uploadTarget.url, {
-    method: uploadTarget.method,
-    body: file,
-  });
-}
-
 export default function RecordingsPage() {
   const { toast } = useToast();
   const recordingsQuery = useQuery({
@@ -32,7 +25,7 @@ export default function RecordingsPage() {
 
   async function handleDropAccepted(file: File) {
     try {
-      const { recording, uploadTarget } = await createRecordingMutation.mutateAsync({
+      const { recordingId, uploadTarget } = await createRecordingMutation.mutateAsync({
         fileName: file.name,
         mimeType: file.type,
       });
@@ -42,7 +35,7 @@ export default function RecordingsPage() {
       if (error) {
         throw new Error(`Upload failed. Please try again later.`);
       }
-      await completeUploadMutation.mutateAsync(recording.id);
+      await completeUploadMutation.mutateAsync(recordingId);
       recordingsQuery.refetch();
     } catch (error: unknown) {
       toast(getErrorMessage(error), 'danger', 5000);

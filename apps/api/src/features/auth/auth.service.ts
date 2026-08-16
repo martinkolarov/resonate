@@ -21,19 +21,19 @@ import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
 type AuthServiceDependencies = {
-  transactionRunner: TransactionRunner;
-  users: UserRepository;
-  sessions: SessionRepository;
   emailVerifications: EmailVerificationRepository;
   outboxMessages: OutboxMessageRepository;
+  sessions: SessionRepository;
+  transactionRunner: TransactionRunner;
+  users: UserRepository;
 };
 
 export function createAuthService({
-  transactionRunner,
-  users,
-  sessions,
   emailVerifications,
   outboxMessages,
+  sessions,
+  transactionRunner,
+  users,
 }: AuthServiceDependencies) {
   async function startSession(userId: string, trx?: Transaction<DB>) {
     const token = generateSessionToken();

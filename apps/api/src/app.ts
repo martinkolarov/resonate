@@ -8,11 +8,9 @@ import { errorHandler } from '@/middleware/error-handler.js';
 
 export function createApp(): Express {
   const infrastructure = createInfrastructure();
-  const auth = createAuthModule(infrastructure);
+  const auth = createAuthModule({ infrastructure });
   const recordings = createRecordingModule({
-    db: infrastructure.db,
-    transactionRunner: infrastructure.transactionRunner,
-    outboxMessages: infrastructure.outboxMessages,
+    infrastructure,
     requireSession: auth.requireSession,
   });
 

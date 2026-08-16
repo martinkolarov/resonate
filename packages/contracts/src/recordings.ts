@@ -21,9 +21,7 @@ export const createRecordingBodySchema = z.object({
 export type CreateRecordingBody = z.infer<typeof createRecordingBodySchema>;
 
 export const createRecordingResponseSchema = z.object({
-  recording: z.object({
-    id: z.string(),
-  }),
+  recordingId: z.string(),
   uploadTarget: z.object({
     url: z.url(),
     method: z.string(),

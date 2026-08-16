@@ -1,53 +1,50 @@
-import env from './env.js';
 import { db } from './infrastructure/db.js';
-import { createResendEmailSender } from './infrastructure/email/resend-email-sender.js';
 import { logger } from './infrastructure/observability/logger.js';
 import { createOutboxMessageRepository } from './infrastructure/outbox/outbox-message.repository.js';
 import { createOutboxWorker } from './infrastructure/outbox/outbox-worker.js';
 import z from 'zod';
 import * as Sentry from '@sentry/node';
+import { handleSendEmail, sendEmailMessageSchema } from './features/auth/auth.outbox.js';
+import {
+  handleRecordingUploaded,
+  recordingUploadedSchema,
+} from './features/recordings/recording.outbox.js';
+import { createResendEmailSender } from './infrastructure/email/resend-email-sender.js';
+import env from './env.js';
+import {
+  createRecordingQueue,
+  createRecordingQueueWorker,
+} from './features/recordings/recording.queue.js';
+import { redis } from './infrastructure/redis.js';
 
 const workerLogger = logger.child({ component: 'worker' });
 
-const sendEmailMessageSchema = z.object({
-  id: z.string(),
-  type: z.literal('send-email'),
-  payload: z.object({
-    to: z.string(),
-    subject: z.string(),
-    html: z.string(),
-  }),
-});
+const emailSender = createResendEmailSender(env.RESEND_API_KEY);
 
-type SendEmailMessage = z.infer<typeof sendEmailMessageSchema>;
-
-const messageSchema = z.discriminatedUnion('type', [sendEmailMessageSchema]);
+const recordingQueue = createRecordingQueue(redis);
+const recordingQueueWorker = createRecordingQueueWorker(redis);
 
 const outboxMessages = createOutboxMessageRepository(db);
 const outboxWorker = createOutboxWorker(outboxMessages);
 
-const emailSender = createResendEmailSender(env.RESEND_API_KEY);
+const outboxMessageSchema = z.discriminatedUnion('type', [
+  sendEmailMessageSchema,
+  recordingUploadedSchema,
+]);
 
-async function handleSendEmail(message: SendEmailMessage) {
-  await emailSender.send(
-    message.payload.to,
-    message.payload.subject,
-    message.payload.html,
-    message.id
-  );
-}
-
-async function dispatch(message: unknown) {
-  const parsedMessage = messageSchema.parse(message);
+async function handleOutboxMessage(message: unknown) {
+  const parsedMessage = outboxMessageSchema.parse(message);
 
   switch (parsedMessage.type) {
     case 'send-email':
-      await handleSendEmail(parsedMessage);
+      await handleSendEmail(parsedMessage, emailSender);
+      break;
+    case 'recording-uploaded':
+      await handleRecordingUploaded(parsedMessage, recordingQueue);
       break;
   }
 }
 
-const abortController = new AbortController();
 let isShuttingDown = false;
 async function shutdown(signal: NodeJS.Signals) {
   if (isShuttingDown) return;
@@ -55,7 +52,10 @@ async function shutdown(signal: NodeJS.Signals) {
   try {
     workerLogger.info({ signal }, 'Worker shutting down');
 
-    abortController.abort();
+    await outboxWorker.close();
+    await recordingQueueWorker.close();
+    await recordingQueue.close();
+    await redis.quit();
     await db.destroy();
     await Sentry.close(2_000);
 
@@ -69,4 +69,4 @@ async function shutdown(signal: NodeJS.Signals) {
 process.once('SIGTERM', shutdown);
 process.once('SIGINT', shutdown);
 
-await outboxWorker.work(dispatch, abortController.signal);
+await Promise.all([outboxWorker.run(handleOutboxMessage), recordingQueueWorker.run()]);

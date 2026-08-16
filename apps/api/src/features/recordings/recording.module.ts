@@ -5,10 +5,11 @@ import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
 import { Router, type RequestHandler } from 'express';
 
-type RecordingModuleDependencies = Pick<
-  Infrastructure,
-  'db' | 'transactionRunner' | 'outboxMessages'
-> & {
+type RecordingModuleDependencies = {
+  infrastructure: Pick<
+    Infrastructure,
+    'db' | 'objectStorage' | 'outboxMessages' | 'transactionRunner'
+  >;
   requireSession: RequestHandler;
 };
 
@@ -17,13 +18,17 @@ type RecordingModule = {
 };
 
 export function createRecordingModule({
-  db,
-  transactionRunner,
-  outboxMessages,
+  infrastructure,
   requireSession,
 }: RecordingModuleDependencies): RecordingModule {
+  const { db, objectStorage, outboxMessages, transactionRunner } = infrastructure;
   const recordings = createRecordingRepository(db);
-  const service = createRecordingService({ transactionRunner, outboxMessages, recordings });
+  const service = createRecordingService({
+    objectStorage,
+    outboxMessages,
+    recordings,
+    transactionRunner,
+  });
   const router = Router();
 
   router.use(requireSession);
@@ -48,26 +53,19 @@ export function createRecordingModule({
 
     const { fileName, mimeType } = data;
     const userId = res.locals.user.id;
-    const objectKey = `uploads/${userId}/${crypto.randomUUID()}`;
-    const recording = await service.createRecording({
-      userId,
-      objectKey,
-      fileName,
-    });
-    if (!recording) {
-      throw new Error('Recording could not be created');
-    }
 
-    const uploadTarget = await service.createUploadTarget(objectKey, mimeType);
+    const { recordingId, uploadTarget } = await service.startUpload(userId, fileName, mimeType);
+
     return res.json({
-      recording,
+      recordingId,
       uploadTarget,
     });
   });
 
-  router.post('/:id/complete-upload', async (req, res) => {
-    const { id } = req.params;
-    await service.completeUpload(id);
+  router.post('/:recordingId/complete-upload', async (req, res) => {
+    const { recordingId } = req.params;
+    const userId = res.locals.user.id;
+    await service.completeUpload(userId, recordingId);
     return res.json('OK');
   });
 

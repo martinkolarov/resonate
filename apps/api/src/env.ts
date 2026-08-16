@@ -6,6 +6,9 @@ dotenvExpand.expand(dotenv.config({ path: new URL('../.env', import.meta.url) })
 
 const envSchema = z.object({
   DATABASE_URL: z.url(),
+  REDIS_HOST: z.string().min(1),
+  REDIS_PORT: z.coerce.number().int().min(1).max(65_535),
+  REDIS_URL: z.url(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   RESEND_API_KEY: z.string(),
   SENTRY_DSN: z.string().optional(),

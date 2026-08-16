@@ -1,25 +1,20 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { RecordingRepository } from './repositories/recording.repository.js';
-import env from '@/env.js';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 import type { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
-
-const client = new S3Client({
-  region: env.AWS_REGION,
-  requestChecksumCalculation: 'WHEN_REQUIRED',
-});
+import type { ObjectStorage } from '@/infrastructure/object-storage/object-storage.js';
 
 type RecordingServiceDependencies = {
-  transactionRunner: TransactionRunner;
+  objectStorage: ObjectStorage;
   outboxMessages: OutboxMessageRepository;
   recordings: RecordingRepository;
+  transactionRunner: TransactionRunner;
 };
 
 export function createRecordingService({
-  transactionRunner,
+  objectStorage,
   outboxMessages,
   recordings,
+  transactionRunner,
 }: RecordingServiceDependencies) {
   return {
     async listRecordingsByUserId(userId: string) {
@@ -30,51 +25,32 @@ export function createRecordingService({
       return recordings.getById(id);
     },
 
-    async createRecording({
-      userId,
-      objectKey,
-      fileName,
-    }: {
-      userId: string;
-      objectKey: string;
-      fileName: string;
-    }) {
+    async startUpload(userId: string, fileName: string, mimeType: string) {
+      const objectKey = `uploads/${userId}/${crypto.randomUUID()}`;
       const recording = await recordings.create({
         userId,
         objectKey,
         fileName,
-        provider: 's3',
+        provider: objectStorage.provider,
       });
-      return recording;
-    },
-
-    async createUploadTarget(key: string, contentType: string) {
-      const expirationSeconds = 10 * 60; // 10 minutes
-      const expiresAt = new Date(Date.now() + expirationSeconds * 1000);
-      const url = await getSignedUrl(
-        client,
-        new PutObjectCommand({
-          Key: key,
-          Bucket: env.AWS_S3_BUCKET,
-          ContentType: contentType,
-        }),
-        { expiresIn: expirationSeconds }
-      );
+      if (!recording) {
+        throw new Error('Recording could not be created');
+      }
+      const uploadTarget = await objectStorage.createUploadTarget(objectKey, mimeType);
       return {
-        url,
-        method: 'PUT' as const,
-        expiresAt,
+        recordingId: recording.id,
+        uploadTarget,
       };
     },
 
-    async completeUpload(id: string) {
+    async completeUpload(userId: string, recordingId: string) {
       return transactionRunner.run(async trx => {
-        const recording = await recordings.markUploaded(id, trx);
+        const recording = await recordings.markUploaded(userId, recordingId, trx);
         if (recording) {
           await outboxMessages.enqueue(
             'recording-uploaded',
             {
-              id,
+              recordingId,
             },
             trx
           );

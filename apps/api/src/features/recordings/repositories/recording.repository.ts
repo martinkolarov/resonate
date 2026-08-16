@@ -35,12 +35,13 @@ export function createRecordingRepository(db: Kysely<DB>) {
         .executeTakeFirst();
     },
 
-    async markUploaded(id: string, trx?: Transaction<DB>) {
+    async markUploaded(userId: string, recordingId: string, trx?: Transaction<DB>) {
       return await (trx ?? db)
         .updateTable('recordings')
         .set({ status: 'uploaded' })
         .where('status', '=', 'uploading')
-        .where('id', '=', id)
+        .where('id', '=', recordingId)
+        .where('user_id', '=', userId)
         .returning(['id'])
         .executeTakeFirst();
     },
