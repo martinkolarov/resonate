@@ -12,5 +12,3 @@ export function createTransactionRunner(db: Kysely<DB>): TransactionRunner {
     },
   };
 }
-
-export type KyselyTransactionRunner = ReturnType<typeof createTransactionRunner>;

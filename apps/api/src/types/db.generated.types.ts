@@ -46,11 +46,13 @@ export interface OutboxMessages {
 export interface Recordings {
   created_at: Generated<Timestamp>;
   duration_ms: number | null;
+  failed_reason: string | null;
   file_name: string | null;
   id: Generated<string>;
   metadata: Generated<Json>;
   mime_type: string | null;
   object_key: string;
+  processing_stage: string | null;
   provider: string;
   size_bytes: Int8 | null;
   status: Generated<string>;

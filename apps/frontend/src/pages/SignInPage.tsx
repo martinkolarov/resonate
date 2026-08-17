@@ -5,6 +5,7 @@ import { signIn } from '@/features/auth/auth.api';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import type { SignInRequest } from '@resonate/contracts';
+import { Link as RouterLink } from 'react-router';
 
 export default function SignInPage() {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export default function SignInPage() {
       footer={
         <>
           Need to create an account?&nbsp;
-          <Link href="#" size="sm">
+          <Link as={RouterLink} to="/sign-up" size="sm">
             Sign Up
           </Link>
         </>

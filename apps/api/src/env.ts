@@ -1,8 +1,16 @@
 import dotenv from 'dotenv';
 import dotenvExpand from 'dotenv-expand';
+import { fileURLToPath } from 'node:url';
 import z from 'zod';
 
-dotenvExpand.expand(dotenv.config({ path: new URL('../.env', import.meta.url) }));
+dotenvExpand.expand(
+  dotenv.config({
+    path: [
+      fileURLToPath(new URL('../.env.local', import.meta.url)),
+      fileURLToPath(new URL('../.env', import.meta.url)),
+    ],
+  })
+);
 
 const envSchema = z.object({
   DATABASE_URL: z.url(),
@@ -16,6 +24,7 @@ const envSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_REGION: z.string(),
   AWS_S3_BUCKET: z.string(),
+  AWS_S3_ENDPOINT: z.url().optional(),
 });
 
 export default envSchema.parse(process.env);

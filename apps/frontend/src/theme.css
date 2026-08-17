@@ -6,4 +6,45 @@
 
 @theme {
   --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --background-image-hero-section-centered-navbar: linear-gradient(
+    137deg,
+    #f4f4f5 34.15%,
+    #f8e5ec 46.96%,
+    #fdd0df 63.99%,
+    #e4d4f4 75.82%,
+    #a9eaf0 98.9%
+  );
+}
+
+@keyframes scrolling-banner {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-50% - var(--gap) / 2));
+  }
+}
+
+@keyframes scrolling-banner-vertical {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-50% - var(--gap) / 2));
+  }
+}
+
+.scrolling-banner-animation {
+  animation: scrolling-banner var(--duration) linear infinite;
+}
+
+.scrolling-banner-animation-vertical {
+  animation: scrolling-banner-vertical var(--duration) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrolling-banner-animation,
+  .scrolling-banner-animation-vertical {
+    animation-play-state: paused;
+  }
 }

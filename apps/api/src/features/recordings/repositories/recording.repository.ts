@@ -7,11 +7,13 @@ export function createRecordingRepository(db: Kysely<DB>) {
       userId,
       objectKey,
       fileName,
+      mimeType,
       provider,
     }: {
       userId: string;
       objectKey: string;
       fileName?: string;
+      mimeType: string;
       provider: string;
     }) {
       return await db
@@ -20,17 +22,18 @@ export function createRecordingRepository(db: Kysely<DB>) {
           user_id: userId,
           object_key: objectKey,
           file_name: fileName,
+          mime_type: mimeType,
           provider,
         })
         .returning('id')
         .executeTakeFirst();
     },
 
-    async getById(id: string) {
+    async getById(recordingId: string) {
       return await db
         .selectFrom('recordings')
         .selectAll()
-        .where('id', '=', id)
+        .where('id', '=', recordingId)
         .limit(1)
         .executeTakeFirst();
     },
@@ -44,6 +47,32 @@ export function createRecordingRepository(db: Kysely<DB>) {
         .where('user_id', '=', userId)
         .returning(['id'])
         .executeTakeFirst();
+    },
+
+    async markFailed(recordingId: string, message: string) {
+      return await db
+        .updateTable('recordings')
+        .set({ status: 'failed', failed_reason: message })
+        .where('id', '=', recordingId)
+        .execute();
+    },
+
+    async completeValidation(recordingId: string, sizeBytes: number, mimeType: string) {
+      return await db
+        .updateTable('recordings')
+        .set({ size_bytes: sizeBytes, mime_type: mimeType, processing_stage: 'encoding' })
+        .where('id', '=', recordingId)
+        .execute();
+    },
+
+    async updateProcessingStage(recordingId: string, newProcessingStage: string) {
+      return await db
+        .updateTable('recordings')
+        .set({
+          processing_stage: newProcessingStage,
+        })
+        .where('id', '=', recordingId)
+        .execute();
     },
 
     async listByUserId(userId: string) {

@@ -8,6 +8,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       column.notNull().references('users.id').onDelete('cascade')
     )
     .addColumn('status', 'text', column => column.notNull().defaultTo('uploading'))
+    .addColumn('processing_stage', 'text')
+    .addColumn('failed_reason', 'text')
     .addColumn('file_name', 'text')
     .addColumn('object_key', 'text', column => column.notNull().unique())
     .addColumn('provider', 'text', column => column.notNull())
@@ -19,6 +21,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addCheckConstraint(
       'recording_status_check',
       sql`status in ('uploading', 'uploaded', 'processing', 'ready', 'failed')`
+    )
+    .addCheckConstraint(
+      'recording_processing_stage_check',
+      sql`processing_stage in ('validating', 'encoding', 'transcribing', 'summarizing')`
     )
     .execute();
 

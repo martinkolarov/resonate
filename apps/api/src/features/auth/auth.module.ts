@@ -8,7 +8,7 @@ import { createUserRepository } from '@/features/auth/repositories/user.reposito
 import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
 
-type AuthModuleDependencies = {
+type AuthModuleDeps = {
   infrastructure: Pick<Infrastructure, 'db' | 'outboxMessages' | 'transactionRunner'>;
 };
 
@@ -33,7 +33,7 @@ function sendSessionResponse(
     .end();
 }
 
-export function createAuthModule({ infrastructure }: AuthModuleDependencies): AuthModule {
+export function createAuthModule({ infrastructure }: AuthModuleDeps): AuthModule {
   const { db, outboxMessages, transactionRunner } = infrastructure;
   const emailVerifications = createEmailVerificationRepository(db);
   const sessions = createSessionRepository(db);

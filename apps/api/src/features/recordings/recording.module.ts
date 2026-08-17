@@ -5,7 +5,7 @@ import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
 import { Router, type RequestHandler } from 'express';
 
-type RecordingModuleDependencies = {
+type RecordingModuleDeps = {
   infrastructure: Pick<
     Infrastructure,
     'db' | 'objectStorage' | 'outboxMessages' | 'transactionRunner'
@@ -20,7 +20,7 @@ type RecordingModule = {
 export function createRecordingModule({
   infrastructure,
   requireSession,
-}: RecordingModuleDependencies): RecordingModule {
+}: RecordingModuleDeps): RecordingModule {
   const { db, objectStorage, outboxMessages, transactionRunner } = infrastructure;
   const recordings = createRecordingRepository(db);
   const service = createRecordingService({

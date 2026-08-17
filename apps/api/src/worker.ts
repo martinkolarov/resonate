@@ -1,6 +1,4 @@
-import { db } from './infrastructure/db.js';
 import { logger } from './infrastructure/observability/logger.js';
-import { createOutboxMessageRepository } from './infrastructure/outbox/outbox-message.repository.js';
 import { createOutboxWorker } from './infrastructure/outbox/outbox-worker.js';
 import z from 'zod';
 import * as Sentry from '@sentry/node';
@@ -15,17 +13,18 @@ import {
   createRecordingQueue,
   createRecordingQueueWorker,
 } from './features/recordings/recording.queue.js';
-import { redis } from './infrastructure/redis.js';
+import { createInfrastructure } from './infrastructure/infrastructure.js';
 
 const workerLogger = logger.child({ component: 'worker' });
 
+const infrastructure = createInfrastructure();
+
 const emailSender = createResendEmailSender(env.RESEND_API_KEY);
 
-const recordingQueue = createRecordingQueue(redis);
-const recordingQueueWorker = createRecordingQueueWorker(redis);
+const recordingQueue = createRecordingQueue(infrastructure.redis);
+const recordingQueueWorker = createRecordingQueueWorker(infrastructure);
 
-const outboxMessages = createOutboxMessageRepository(db);
-const outboxWorker = createOutboxWorker(outboxMessages);
+const outboxWorker = createOutboxWorker(infrastructure.outboxMessages);
 
 const outboxMessageSchema = z.discriminatedUnion('type', [
   sendEmailMessageSchema,
@@ -55,14 +54,14 @@ async function shutdown(signal: NodeJS.Signals) {
     await outboxWorker.close();
     await recordingQueueWorker.close();
     await recordingQueue.close();
-    await redis.quit();
-    await db.destroy();
+    await infrastructure.redis.quit();
+    await infrastructure.db.destroy();
     await Sentry.close(2_000);
-
     workerLogger.info('Worker shutdown complete');
+    process.exit(0);
   } catch (error) {
     workerLogger.error({ err: error }, 'Worker failed to shut down');
-    process.exitCode = 1;
+    process.exit(1);
   }
 }
 

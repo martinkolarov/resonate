@@ -1,5 +1,5 @@
 import z from 'zod';
-import { RecordingQueue } from './recording.queue.js';
+import type { RecordingQueue } from './recording.queue.js';
 
 export const recordingUploadedSchema = z.object({
   id: z.string(),
