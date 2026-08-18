@@ -3,11 +3,12 @@ import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 import type { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
 import type { ObjectStorage } from '@/infrastructure/object-storage/object-storage.js';
 import { tmpdir } from 'node:os';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { probeMedia } from '@/lib/probe-media.js';
+import { probeMedia, ProbeMediaResult } from '@/features/recordings/probe-media.js';
+import { transcodeToMp3 } from '@/features/recordings/transcode-to-mp3.js';
 
-const MAX_FILE_SIZE_MB = 150;
+const MAX_FILE_SIZE_MB = 100;
 const MAX_RECORDING_DURATION_SECONDS = 60 * 60; // 60 minutes
 
 export const SUPPORTED_RECORDING_MIME_TYPES = [
@@ -34,7 +35,8 @@ type ProcessRecordingResult =
         | 'UNSUPPORTED_CONTENT_TYPE'
         | 'EMPTY_FILE'
         | 'MAX_FILE_SIZE_EXCEEDED'
-        | 'MAX_DURATION_EXCEEDED';
+        | 'MAX_DURATION_EXCEEDED'
+        | 'INVALID_MEDIA';
     };
 
 function getBaseMimeType(mimeType: string | undefined) {
@@ -105,7 +107,6 @@ export function createRecordingService({
       if (!recording) {
         return { ok: false, reason: 'RECORDING_NOT_FOUND' };
       }
-
       await recordings.updateProcessingStage(recording.id, 'validating');
 
       const objectMetadata = await objectStorage.getMetadata(recording.object_key);
@@ -124,10 +125,20 @@ export function createRecordingService({
 
       const workingDirectory = await mkdtemp(join(tmpdir(), `recording-${recording.id}-`));
       const inputPath = join(workingDirectory, 'input');
+      const outputPath = join(workingDirectory, 'output');
+
+      let probeResult: ProbeMediaResult;
       try {
         await objectStorage.downloadToFile(recording.object_key, inputPath);
-        const mediaInfo = await probeMedia(inputPath);
-        if (mediaInfo.durationSeconds > MAX_RECORDING_DURATION_SECONDS) {
+        try {
+          probeResult = await probeMedia(inputPath);
+        } catch {
+          return {
+            ok: false,
+            reason: 'INVALID_MEDIA',
+          };
+        }
+        if (probeResult.durationSeconds > MAX_RECORDING_DURATION_SECONDS) {
           return {
             ok: false,
             reason: 'MAX_DURATION_EXCEEDED',
@@ -136,8 +147,15 @@ export function createRecordingService({
         await recordings.completeValidation(recording.id, {
           sizeBytes,
           mimeType,
-          durationMs: mediaInfo.durationSeconds * 1000,
+          durationMs: Math.round(probeResult.durationSeconds * 1000),
         });
+
+        await recordings.updateProcessingStage(recording.id, 'transcoding');
+        await transcodeToMp3(inputPath, outputPath);
+        const outputStats = await stat(outputPath);
+        if (!outputStats.isFile() || outputStats.size === 0) {
+          throw new Error('MP3 output is missing or empty');
+        }
       } finally {
         await rm(workingDirectory, { recursive: true, force: true });
       }
