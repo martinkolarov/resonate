@@ -9,7 +9,7 @@ import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
 
 type AuthModuleDeps = {
-  infrastructure: Pick<Infrastructure, 'db' | 'outboxMessages' | 'transactionRunner'>;
+  infrastructure: Pick<Infrastructure, 'postgres' | 'outboxMessages' | 'transactionRunner'>;
 };
 
 type AuthModule = {
@@ -34,10 +34,10 @@ function sendSessionResponse(
 }
 
 export function createAuthModule({ infrastructure }: AuthModuleDeps): AuthModule {
-  const { db, outboxMessages, transactionRunner } = infrastructure;
-  const emailVerifications = createEmailVerificationRepository(db);
-  const sessions = createSessionRepository(db);
-  const users = createUserRepository(db);
+  const { postgres, outboxMessages, transactionRunner } = infrastructure;
+  const emailVerifications = createEmailVerificationRepository(postgres);
+  const sessions = createSessionRepository(postgres);
+  const users = createUserRepository(postgres);
   const service = createAuthService({
     emailVerifications,
     outboxMessages,

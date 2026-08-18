@@ -1,10 +1,10 @@
 import type { Kysely, Selectable, Transaction } from 'kysely';
 import type { DB } from '@/types/db.generated.types.js';
 
-export function createUserRepository(db: Kysely<DB>) {
+export function createUserRepository(postgres: Kysely<DB>) {
   return {
     async findByEmail(email: string): Promise<Selectable<DB['users']> | undefined> {
-      return db
+      return postgres
         .selectFrom('users')
         .selectAll()
         .where('email', '=', email)
@@ -16,7 +16,7 @@ export function createUserRepository(db: Kysely<DB>) {
       { name, email, password }: { name: string; email: string; password: string },
       trx?: Transaction<DB>
     ) {
-      return await (trx ?? db)
+      return await (trx ?? postgres)
         .insertInto('users')
         .values({
           name,

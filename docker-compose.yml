@@ -24,6 +24,20 @@ services:
       timeout: 3s
       retries: 5
 
+  mongo:
+    image: mongo:8.0
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-resonate}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-resonate-dev-secret}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-resonate}
+      # Local Docker workaround for MongoDB's TCMalloc incompatibility with Linux 6.19.
+      GLIBC_TUNABLES: glibc.pthread.rseq=1
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodata:/data/db
+
   minio:
     image: quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z
     command: server /data --console-address ":9001"
@@ -53,4 +67,5 @@ services:
 volumes:
   postgresdata:
   redisdata:
+  mongodata:
   miniodata:

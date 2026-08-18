@@ -1,8 +1,11 @@
 import { defineConfig } from 'kysely-ctl';
-import { db } from '@/infrastructure/db.js';
+import { createPostgres } from '@/infrastructure/postgres.js';
+import env from '@/env.js';
+
+const postgres = createPostgres({ connectionString: env.DATABASE_URL });
 
 export default defineConfig({
-  kysely: db,
+  kysely: postgres.client,
   migrations: {
     migrationFolder: './migrations',
   },

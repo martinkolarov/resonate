@@ -1,10 +1,10 @@
 import { DB } from '@/types/db.generated.types.js';
 import { Kysely, sql, Transaction } from 'kysely';
 
-export function createOutboxMessageRepository(db: Kysely<DB>) {
+export function createOutboxMessageRepository(postgres: Kysely<DB>) {
   return {
     async claimAvailable(limit: number) {
-      return await db.transaction().execute(async trx => {
+      return await postgres.transaction().execute(async trx => {
         const messages = await trx
           .selectFrom('outbox_messages')
           .select(['id', 'type', 'payload'])
@@ -40,7 +40,7 @@ export function createOutboxMessageRepository(db: Kysely<DB>) {
     },
 
     async enqueue(type: string, payload: unknown, trx?: Transaction<DB>) {
-      await (trx ?? db)
+      await (trx ?? postgres)
         .insertInto('outbox_messages')
         .values({
           type: type,
@@ -51,7 +51,7 @@ export function createOutboxMessageRepository(db: Kysely<DB>) {
     },
 
     async markProcessed(id: string) {
-      await db
+      await postgres
         .updateTable('outbox_messages')
         .set({
           processed_at: sql`now()`,
@@ -64,7 +64,7 @@ export function createOutboxMessageRepository(db: Kysely<DB>) {
     },
 
     async scheduleRetry(id: string, availableAt: Date, error: Error) {
-      await db
+      await postgres
         .updateTable('outbox_messages')
         .set({
           available_at: availableAt,

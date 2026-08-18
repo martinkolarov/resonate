@@ -16,7 +16,6 @@
     "migrate:make": "kysely migrate make",
     "migrate:latest": "kysely migrate latest",
     "migrate:down": "kysely migrate down",
-    "s3:smoke": "tsx ./scripts/s3-smoke.ts",
     "test": "tsx --test ./src/*.test.ts ./src/**/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -32,6 +31,7 @@
     "express": "^5.2.1",
     "ioredis": "^6.0.0",
     "kysely": "^0.29.3",
+    "mongodb": "^7.5.0",
     "pg": "^8.22.0",
     "pino": "^10.3.1",
     "resend": "^6.17.2",

@@ -5,10 +5,10 @@ export interface TransactionRunner {
   run<T>(callback: (trx: Transaction<DB>) => Promise<T>): Promise<T>;
 }
 
-export function createTransactionRunner(db: Kysely<DB>): TransactionRunner {
+export function createTransactionRunner(postgres: Kysely<DB>): TransactionRunner {
   return {
     async run<T>(callback: (trx: Transaction<DB>) => Promise<T>) {
-      return await db.transaction().execute(callback);
+      return await postgres.transaction().execute(callback);
     },
   };
 }

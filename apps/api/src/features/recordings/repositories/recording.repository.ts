@@ -1,7 +1,7 @@
 import { DB } from '@/types/db.generated.types.js';
 import { Kysely, Transaction } from 'kysely';
 
-export function createRecordingRepository(db: Kysely<DB>) {
+export function createRecordingRepository(postgres: Kysely<DB>) {
   return {
     async create({
       userId,
@@ -16,7 +16,7 @@ export function createRecordingRepository(db: Kysely<DB>) {
       mimeType: string;
       provider: string;
     }) {
-      return await db
+      return await postgres
         .insertInto('recordings')
         .values({
           user_id: userId,
@@ -30,7 +30,7 @@ export function createRecordingRepository(db: Kysely<DB>) {
     },
 
     async getById(recordingId: string) {
-      return await db
+      return await postgres
         .selectFrom('recordings')
         .selectAll()
         .where('id', '=', recordingId)
@@ -39,7 +39,7 @@ export function createRecordingRepository(db: Kysely<DB>) {
     },
 
     async markUploaded(userId: string, recordingId: string, trx?: Transaction<DB>) {
-      return await (trx ?? db)
+      return await (trx ?? postgres)
         .updateTable('recordings')
         .set({ status: 'uploaded' })
         .where('status', '=', 'uploading')
@@ -50,7 +50,7 @@ export function createRecordingRepository(db: Kysely<DB>) {
     },
 
     async markFailed(recordingId: string, message: string) {
-      return await db
+      return await postgres
         .updateTable('recordings')
         .set({ status: 'failed', failed_reason: message })
         .where('id', '=', recordingId)
@@ -58,7 +58,7 @@ export function createRecordingRepository(db: Kysely<DB>) {
     },
 
     async completeValidation(recordingId: string, sizeBytes: number, mimeType: string) {
-      return await db
+      return await postgres
         .updateTable('recordings')
         .set({ size_bytes: sizeBytes, mime_type: mimeType, processing_stage: 'encoding' })
         .where('id', '=', recordingId)
@@ -66,7 +66,7 @@ export function createRecordingRepository(db: Kysely<DB>) {
     },
 
     async updateProcessingStage(recordingId: string, newProcessingStage: string) {
-      return await db
+      return await postgres
         .updateTable('recordings')
         .set({
           processing_stage: newProcessingStage,
@@ -76,7 +76,7 @@ export function createRecordingRepository(db: Kysely<DB>) {
     },
 
     async listByUserId(userId: string) {
-      return await db
+      return await postgres
         .selectFrom('recordings')
         .select(['id', 'file_name', 'status', 'created_at'])
         .where('user_id', '=', userId)

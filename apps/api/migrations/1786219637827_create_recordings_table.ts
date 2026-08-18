@@ -16,7 +16,6 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn('size_bytes', 'bigint')
     .addColumn('mime_type', 'text')
     .addColumn('duration_ms', 'integer')
-    .addColumn('metadata', 'jsonb', column => column.notNull().defaultTo(sql`'{}'::jsonb`))
     .addColumn('created_at', 'timestamptz', column => column.notNull().defaultTo(sql`now()`))
     .addCheckConstraint(
       'recording_status_check',

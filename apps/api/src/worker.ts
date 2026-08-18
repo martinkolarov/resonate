@@ -18,6 +18,7 @@ import { createInfrastructure } from './infrastructure/infrastructure.js';
 const workerLogger = logger.child({ component: 'worker' });
 
 const infrastructure = createInfrastructure();
+await infrastructure.connect();
 
 const emailSender = createResendEmailSender(env.RESEND_API_KEY);
 
@@ -54,8 +55,7 @@ async function shutdown(signal: NodeJS.Signals) {
     await outboxWorker.close();
     await recordingQueueWorker.close();
     await recordingQueue.close();
-    await infrastructure.redis.quit();
-    await infrastructure.db.destroy();
+    await infrastructure.close();
     await Sentry.close(2_000);
     workerLogger.info('Worker shutdown complete');
     process.exit(0);

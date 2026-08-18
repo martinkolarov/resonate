@@ -1,11 +1,11 @@
 import type { DB } from '@/types/db.generated.types.js';
 import type { Kysely, Transaction } from 'kysely';
 
-export function createEmailVerificationRepository(db: Kysely<DB>) {
+export function createEmailVerificationRepository(postgres: Kysely<DB>) {
   return {
     async upsert(userId: string, hashedToken: string, trx?: Transaction<DB>) {
       const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
-      await (trx ?? db)
+      await (trx ?? postgres)
         .insertInto('email_verifications')
         .values({
           user_id: userId,

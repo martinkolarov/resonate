@@ -1,7 +1,7 @@
 import type { Kysely, Selectable, Transaction } from 'kysely';
 import type { DB } from '@/types/db.generated.types.js';
 
-export function createSessionRepository(db: Kysely<DB>) {
+export function createSessionRepository(postgres: Kysely<DB>) {
   return {
     async create(
       {
@@ -15,7 +15,7 @@ export function createSessionRepository(db: Kysely<DB>) {
       },
       trx?: Transaction<DB>
     ): Promise<void> {
-      await (trx ?? db)
+      await (trx ?? postgres)
         .insertInto('sessions')
         .values({
           user_id: userId,
@@ -30,7 +30,7 @@ export function createSessionRepository(db: Kysely<DB>) {
     ): Promise<
       Pick<Selectable<DB['users']>, 'id' | 'email' | 'name' | 'email_verified_at'> | undefined
     > {
-      return db
+      return postgres
         .selectFrom('sessions')
         .innerJoin('users', 'users.id', 'sessions.user_id')
         .select(['users.id', 'users.email', 'users.name', 'users.email_verified_at'])

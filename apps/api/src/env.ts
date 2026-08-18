@@ -5,18 +5,15 @@ import z from 'zod';
 
 dotenvExpand.expand(
   dotenv.config({
-    path: [
-      fileURLToPath(new URL('../.env.local', import.meta.url)),
-      fileURLToPath(new URL('../.env', import.meta.url)),
-    ],
+    path: [fileURLToPath(new URL('../.env', import.meta.url))],
   })
 );
 
 const envSchema = z.object({
   DATABASE_URL: z.url(),
-  REDIS_HOST: z.string().min(1),
-  REDIS_PORT: z.coerce.number().int().min(1).max(65_535),
   REDIS_URL: z.url(),
+  MONGO_URI: z.url(),
+  MONGO_DATABASE: z.string().min(1),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   RESEND_API_KEY: z.string(),
   SENTRY_DSN: z.string().optional(),

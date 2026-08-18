@@ -8,7 +8,7 @@ import { Router, type RequestHandler } from 'express';
 type RecordingModuleDeps = {
   infrastructure: Pick<
     Infrastructure,
-    'db' | 'objectStorage' | 'outboxMessages' | 'transactionRunner'
+    'postgres' | 'objectStorage' | 'outboxMessages' | 'transactionRunner'
   >;
   requireSession: RequestHandler;
 };
@@ -21,8 +21,8 @@ export function createRecordingModule({
   infrastructure,
   requireSession,
 }: RecordingModuleDeps): RecordingModule {
-  const { db, objectStorage, outboxMessages, transactionRunner } = infrastructure;
-  const recordings = createRecordingRepository(db);
+  const { postgres, objectStorage, outboxMessages, transactionRunner } = infrastructure;
+  const recordings = createRecordingRepository(postgres);
   const service = createRecordingService({
     objectStorage,
     outboxMessages,
