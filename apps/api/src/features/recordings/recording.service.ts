@@ -117,6 +117,7 @@ export function createRecordingService({
       }
 
       await recordings.completeValidation(recording.id, size, contentType);
+
       return { ok: true };
     },
   };

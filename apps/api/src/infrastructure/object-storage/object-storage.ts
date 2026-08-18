@@ -12,7 +12,7 @@ type ObjectMetadata = {
 
 export interface ObjectStorage {
   provider: string;
-
   createUploadTarget(key: string, contentType: string): Promise<UploadTarget>;
   getMetadata(key: string): Promise<ObjectMetadata>;
+  downloadToFile(key: string, destinationPath: string): Promise<void>;
 }

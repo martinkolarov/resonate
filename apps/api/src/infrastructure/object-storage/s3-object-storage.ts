@@ -1,6 +1,14 @@
-import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import type { ObjectStorage } from './object-storage.js';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import { createWriteStream } from 'node:fs';
 
 export function createS3ObjectStorage({
   bucket,
@@ -22,12 +30,12 @@ export function createS3ObjectStorage({
     provider: 's3',
 
     async getMetadata(key) {
-      const object = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      const response = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
 
       return {
-        contentType: object.ContentType,
-        etag: object.ETag,
-        size: object.ContentLength ?? 0,
+        contentType: response.ContentType,
+        etag: response.ETag,
+        size: response.ContentLength ?? 0,
       };
     },
 
@@ -48,6 +56,21 @@ export function createS3ObjectStorage({
         method: 'PUT',
         expiresAt,
       };
+    },
+
+    async downloadToFile(key, destinationPath) {
+      const response = await client.send(
+        new GetObjectCommand({
+          Key: key,
+          Bucket: bucket,
+        })
+      );
+
+      if (!(response.Body instanceof Readable)) {
+        throw new Error('Body must be a valid stream');
+      }
+
+      await pipeline(response.Body, createWriteStream(destinationPath, { flags: 'wx' }));
     },
   };
 }
