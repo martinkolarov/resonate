@@ -57,10 +57,22 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
         .execute();
     },
 
-    async completeValidation(recordingId: string, sizeBytes: number, mimeType: string) {
+    async completeValidation(
+      recordingId: string,
+      data: {
+        sizeBytes: number;
+        mimeType: string;
+        durationMs: number;
+      }
+    ) {
       return await postgres
         .updateTable('recordings')
-        .set({ size_bytes: sizeBytes, mime_type: mimeType, processing_stage: 'encoding' })
+        .set({
+          processing_stage: 'encoding',
+          size_bytes: data.sizeBytes,
+          mime_type: data.mimeType,
+          duration_ms: data.durationMs,
+        })
         .where('id', '=', recordingId)
         .execute();
     },

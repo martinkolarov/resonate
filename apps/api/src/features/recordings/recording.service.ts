@@ -2,8 +2,13 @@ import type { RecordingRepository } from './repositories/recording.repository.js
 import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 import type { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
 import type { ObjectStorage } from '@/infrastructure/object-storage/object-storage.js';
+import { tmpdir } from 'node:os';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { probeMedia } from '@/lib/probe-media.js';
 
 const MAX_FILE_SIZE_MB = 150;
+const MAX_RECORDING_DURATION_SECONDS = 60 * 60; // 60 minutes
 
 export const SUPPORTED_RECORDING_MIME_TYPES = [
   'audio/aac',
@@ -28,7 +33,8 @@ type ProcessRecordingResult =
         | 'RECORDING_NOT_FOUND'
         | 'UNSUPPORTED_CONTENT_TYPE'
         | 'EMPTY_FILE'
-        | 'MAX_FILE_SIZE_EXCEEDED';
+        | 'MAX_FILE_SIZE_EXCEEDED'
+        | 'MAX_DURATION_EXCEEDED';
     };
 
 function getBaseMimeType(mimeType: string | undefined) {
@@ -103,20 +109,38 @@ export function createRecordingService({
       await recordings.updateProcessingStage(recording.id, 'validating');
 
       const objectMetadata = await objectStorage.getMetadata(recording.object_key);
-      const contentType = getBaseMimeType(objectMetadata.contentType);
-      const size = objectMetadata.size; // bytes
+      const mimeType = getBaseMimeType(objectMetadata.contentType);
+      const sizeBytes = objectMetadata.size;
 
-      if (!contentType || !supportedRecordingMimeTypes.has(contentType)) {
+      if (!mimeType || !supportedRecordingMimeTypes.has(mimeType)) {
         return { ok: false, reason: 'UNSUPPORTED_CONTENT_TYPE' };
       }
-      if (size === 0) {
+      if (sizeBytes === 0) {
         return { ok: false, reason: 'EMPTY_FILE' };
       }
-      if (size / 1000000 > MAX_FILE_SIZE_MB) {
+      if (sizeBytes / 1000000 > MAX_FILE_SIZE_MB) {
         return { ok: false, reason: 'MAX_FILE_SIZE_EXCEEDED' };
       }
 
-      await recordings.completeValidation(recording.id, size, contentType);
+      const workingDirectory = await mkdtemp(join(tmpdir(), `recording-${recording.id}-`));
+      const inputPath = join(workingDirectory, 'input');
+      try {
+        await objectStorage.downloadToFile(recording.object_key, inputPath);
+        const mediaInfo = await probeMedia(inputPath);
+        if (mediaInfo.durationSeconds > MAX_RECORDING_DURATION_SECONDS) {
+          return {
+            ok: false,
+            reason: 'MAX_DURATION_EXCEEDED',
+          };
+        }
+        await recordings.completeValidation(recording.id, {
+          sizeBytes,
+          mimeType,
+          durationMs: mediaInfo.durationSeconds * 1000,
+        });
+      } finally {
+        await rm(workingDirectory, { recursive: true, force: true });
+      }
 
       return { ok: true };
     },

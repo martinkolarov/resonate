@@ -69,11 +69,11 @@ export async function probeMedia(filePath: string) {
     throw new Error('Missing audio stream');
   }
 
-  const duration = Number(audioStream.duration ?? container?.duration);
+  const durationSeconds = Number(audioStream.duration ?? container?.duration);
   const sampleRate = Number(audioStream.sample_rate);
   const channels = Number(audioStream.channels);
 
-  if (!Number.isFinite(duration) || duration <= 0) {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
     throw new Error('Invalid media duration');
   }
 
@@ -90,6 +90,6 @@ export async function probeMedia(filePath: string) {
     channels,
     sampleFormat: audioStream.sample_fmt,
     sampleRate,
-    duration,
+    durationSeconds,
   };
 }
