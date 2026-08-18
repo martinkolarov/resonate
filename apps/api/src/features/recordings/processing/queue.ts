@@ -1,8 +1,8 @@
 import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { Queue, UnrecoverableError, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
-import { createRecordingRepository } from './repositories/recording.repository.js';
-import { createRecordingService } from './recording.service.js';
+import { createRecordingRepository } from '../repositories/recording.repository.js';
+import { createRecordingProcessor } from './process-recording.js';
 
 type ProcessRecordingJobData = {
   recordingId: string;
@@ -10,7 +10,7 @@ type ProcessRecordingJobData = {
 type RecordingJobData = ProcessRecordingJobData;
 type RecordingJobName = 'process-recording';
 
-export function createRecordingQueue(redis: Redis) {
+export function createRecordingProcessingQueue(redis: Redis) {
   const queue = new Queue<RecordingJobData, unknown, RecordingJobName>('recordings', {
     connection: redis,
     defaultJobOptions: {
@@ -31,18 +31,13 @@ export function createRecordingQueue(redis: Redis) {
   };
 }
 
-type RecordingQueueWorkerDeps = Pick<
-  Infrastructure,
-  'postgres' | 'objectStorage' | 'outboxMessages' | 'redis' | 'transactionRunner'
->;
+type RecordingProcessingWorkerDeps = Pick<Infrastructure, 'postgres' | 'objectStorage' | 'redis'>;
 
-export function createRecordingQueueWorker(infrastructure: RecordingQueueWorkerDeps) {
+export function createRecordingProcessingWorker(infrastructure: RecordingProcessingWorkerDeps) {
   const recordings = createRecordingRepository(infrastructure.postgres);
-  const recordingService = createRecordingService({
+  const processor = createRecordingProcessor({
     objectStorage: infrastructure.objectStorage,
-    outboxMessages: infrastructure.outboxMessages,
     recordings,
-    transactionRunner: infrastructure.transactionRunner,
   });
 
   const worker = new Worker<RecordingJobData, unknown, RecordingJobName>(
@@ -53,7 +48,7 @@ export function createRecordingQueueWorker(infrastructure: RecordingQueueWorkerD
       try {
         switch (job.name) {
           case 'process-recording': {
-            const result = await recordingService.processRecording(job.data.recordingId);
+            const result = await processor.process(job.data.recordingId);
             if (!result.ok) {
               throw new UnrecoverableError(result.reason);
             }
@@ -85,4 +80,4 @@ export function createRecordingQueueWorker(infrastructure: RecordingQueueWorkerD
   };
 }
 
-export type RecordingQueue = ReturnType<typeof createRecordingQueue>;
+export type RecordingProcessingQueue = ReturnType<typeof createRecordingProcessingQueue>;

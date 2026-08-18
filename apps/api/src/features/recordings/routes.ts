@@ -1,11 +1,11 @@
 import { createRecordingBodySchema } from '@resonate/contracts';
-import { createRecordingService } from '@/features/recordings/recording.service.js';
+import { createRecordings } from '@/features/recordings/recordings.js';
 import { createRecordingRepository } from '@/features/recordings/repositories/recording.repository.js';
 import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
 import { Router, type RequestHandler } from 'express';
 
-type RecordingModuleDeps = {
+type RecordingRoutesDeps = {
   infrastructure: Pick<
     Infrastructure,
     'postgres' | 'objectStorage' | 'outboxMessages' | 'transactionRunner'
@@ -13,20 +13,20 @@ type RecordingModuleDeps = {
   requireSession: RequestHandler;
 };
 
-type RecordingModule = {
+type RecordingRoutes = {
   router: Router;
 };
 
-export function createRecordingModule({
+export function createRecordingRoutes({
   infrastructure,
   requireSession,
-}: RecordingModuleDeps): RecordingModule {
+}: RecordingRoutesDeps): RecordingRoutes {
   const { postgres, objectStorage, outboxMessages, transactionRunner } = infrastructure;
-  const recordings = createRecordingRepository(postgres);
-  const service = createRecordingService({
+  const recordingRepository = createRecordingRepository(postgres);
+  const recordings = createRecordings({
     objectStorage,
     outboxMessages,
-    recordings,
+    recordings: recordingRepository,
     transactionRunner,
   });
   const router = Router();
@@ -34,9 +34,9 @@ export function createRecordingModule({
   router.use(requireSession);
 
   router.get('/', async (_req, res) => {
-    const recordings = await service.listRecordingsByUserId(res.locals.user.id);
+    const results = await recordings.listByUserId(res.locals.user.id);
     return res.json(
-      recordings.map(recording => ({
+      results.map(recording => ({
         id: recording.id,
         fileName: recording.file_name,
         status: recording.status,
@@ -54,7 +54,7 @@ export function createRecordingModule({
     const { fileName, mimeType } = data;
     const userId = res.locals.user.id;
 
-    const { recordingId, uploadTarget } = await service.startUpload(userId, fileName, mimeType);
+    const { recordingId, uploadTarget } = await recordings.startUpload(userId, fileName, mimeType);
 
     return res.json({
       recordingId,
@@ -65,7 +65,7 @@ export function createRecordingModule({
   router.post('/:recordingId/complete-upload', async (req, res) => {
     const { recordingId } = req.params;
     const userId = res.locals.user.id;
-    await service.completeUpload(userId, recordingId);
+    await recordings.completeUpload(userId, recordingId);
     return res.json('OK');
   });
 

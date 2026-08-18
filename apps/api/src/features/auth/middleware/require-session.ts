@@ -1,10 +1,10 @@
 import { parseCookie } from 'cookie';
 import type { RequestHandler } from 'express';
-import type { AuthService } from '@/features/auth/auth.service.js';
+import type { Authentication } from '@/features/auth/authentication.js';
 import { ApiError } from '@/lib/errors.js';
 
 export function createRequireSession(
-  authService: Pick<AuthService, 'authenticateWithSessionToken'>
+  authentication: Pick<Authentication, 'authenticateWithSessionToken'>
 ): RequestHandler {
   return async (req, res, next) => {
     try {
@@ -15,7 +15,7 @@ export function createRequireSession(
         throw new ApiError('UNAUTHENTICATED');
       }
 
-      res.locals.user = await authService.authenticateWithSessionToken(token);
+      res.locals.user = await authentication.authenticateWithSessionToken(token);
       next();
     } catch (error) {
       next(error);

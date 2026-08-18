@@ -1,5 +1,5 @@
 import z from 'zod';
-import type { RecordingQueue } from './recording.queue.js';
+import type { RecordingProcessingQueue } from './processing/queue.js';
 
 export const recordingUploadedSchema = z.object({
   id: z.string(),
@@ -13,7 +13,7 @@ type RecordingUploaded = z.infer<typeof recordingUploadedSchema>;
 
 export async function handleRecordingUploaded(
   message: RecordingUploaded,
-  recordingQueue: RecordingQueue
+  recordingQueue: RecordingProcessingQueue
 ) {
   await recordingQueue.enqueueProcessRecording(message.payload, message.id);
 }

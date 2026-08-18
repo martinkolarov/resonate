@@ -1,6 +1,6 @@
 import { Router, type RequestHandler, type Response } from 'express';
 import { signInRequestSchema, signUpRequestSchema } from '@resonate/contracts';
-import { createAuthService } from '@/features/auth/auth.service.js';
+import { createAuthentication } from '@/features/auth/authentication.js';
 import { createRequireSession } from '@/features/auth/middleware/require-session.js';
 import { createEmailVerificationRepository } from '@/features/auth/repositories/email-verification.repository.js';
 import { createSessionRepository } from '@/features/auth/repositories/session.repository.js';
@@ -8,11 +8,11 @@ import { createUserRepository } from '@/features/auth/repositories/user.reposito
 import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
 
-type AuthModuleDeps = {
+type AuthRoutesDeps = {
   infrastructure: Pick<Infrastructure, 'postgres' | 'outboxMessages' | 'transactionRunner'>;
 };
 
-type AuthModule = {
+type AuthRoutes = {
   router: Router;
   requireSession: RequestHandler;
 };
@@ -33,19 +33,19 @@ function sendSessionResponse(
     .end();
 }
 
-export function createAuthModule({ infrastructure }: AuthModuleDeps): AuthModule {
+export function createAuthRoutes({ infrastructure }: AuthRoutesDeps): AuthRoutes {
   const { postgres, outboxMessages, transactionRunner } = infrastructure;
   const emailVerifications = createEmailVerificationRepository(postgres);
   const sessions = createSessionRepository(postgres);
   const users = createUserRepository(postgres);
-  const service = createAuthService({
+  const authentication = createAuthentication({
     emailVerifications,
     outboxMessages,
     sessions,
     transactionRunner,
     users,
   });
-  const requireSession = createRequireSession(service);
+  const requireSession = createRequireSession(authentication);
   const router = Router();
 
   router.post('/register', async (req, res) => {
@@ -54,7 +54,7 @@ export function createAuthModule({ infrastructure }: AuthModuleDeps): AuthModule
       throw new ValidationError(error);
     }
 
-    const session = await service.register(data);
+    const session = await authentication.register(data);
     return sendSessionResponse(res, session);
   });
 
@@ -64,7 +64,7 @@ export function createAuthModule({ infrastructure }: AuthModuleDeps): AuthModule
       throw new ValidationError(error);
     }
 
-    const session = await service.login(data);
+    const session = await authentication.login(data);
     return sendSessionResponse(res, session);
   });
 

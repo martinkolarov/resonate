@@ -1,14 +1,14 @@
 import express, { type Express } from 'express';
-import { createAuthModule } from '@/features/auth/auth.module.js';
-import { createRecordingModule } from '@/features/recordings/recording.module.js';
+import { createAuthRoutes } from '@/features/auth/routes.js';
+import { createRecordingRoutes } from '@/features/recordings/routes.js';
 import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ApiError, ValidationError } from '@/lib/errors.js';
 import * as Sentry from '@sentry/node';
 import { errorHandler } from '@/middleware/error-handler.js';
 
 export function createApp(infrastructure: Infrastructure): Express {
-  const auth = createAuthModule({ infrastructure });
-  const recordings = createRecordingModule({
+  const auth = createAuthRoutes({ infrastructure });
+  const recordings = createRecordingRoutes({
     infrastructure,
     requireSession: auth.requireSession,
   });

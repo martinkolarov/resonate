@@ -2,17 +2,17 @@ import { logger } from './infrastructure/observability/logger.js';
 import { createOutboxWorker } from './infrastructure/outbox/outbox-worker.js';
 import z from 'zod';
 import * as Sentry from '@sentry/node';
-import { handleSendEmail, sendEmailMessageSchema } from './features/auth/auth.outbox.js';
+import { handleSendEmail, sendEmailMessageSchema } from './features/auth/send-email.js';
 import {
   handleRecordingUploaded,
   recordingUploadedSchema,
-} from './features/recordings/recording.outbox.js';
+} from './features/recordings/recording-uploaded.js';
 import { createResendEmailSender } from './infrastructure/email/resend-email-sender.js';
 import env from './env.js';
 import {
-  createRecordingQueue,
-  createRecordingQueueWorker,
-} from './features/recordings/recording.queue.js';
+  createRecordingProcessingQueue,
+  createRecordingProcessingWorker,
+} from './features/recordings/processing/queue.js';
 import { createInfrastructure } from './infrastructure/infrastructure.js';
 
 const workerLogger = logger.child({ component: 'worker' });
@@ -22,8 +22,8 @@ await infrastructure.connect();
 
 const emailSender = createResendEmailSender(env.RESEND_API_KEY);
 
-const recordingQueue = createRecordingQueue(infrastructure.redis);
-const recordingQueueWorker = createRecordingQueueWorker(infrastructure);
+const recordingQueue = createRecordingProcessingQueue(infrastructure.redis);
+const recordingQueueWorker = createRecordingProcessingWorker(infrastructure);
 
 const outboxWorker = createOutboxWorker(infrastructure.outboxMessages);
 

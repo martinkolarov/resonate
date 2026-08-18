@@ -1,4 +1,4 @@
-import { runCommand } from '../../lib/run-command.js';
+import { runCommand } from '@/lib/run-command.js';
 
 type FFProbeOutput = {
   format?: {

@@ -1,4 +1,4 @@
-import { runCommand } from '../../lib/run-command.js';
+import { runCommand } from '@/lib/run-command.js';
 
 const OUTPUT_SAMPLE_RATE_HZ = 16_000;
 const OUTPUT_BITRATE = '64k';
