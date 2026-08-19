@@ -1,4 +1,8 @@
+import type { MediaInfo, MediaProcessor } from '@/features/recordings/processing/media.js';
 import { runCommand } from '@/lib/run-command.js';
+
+const OUTPUT_SAMPLE_RATE_HZ = 16_000;
+const OUTPUT_BITRATE = '64k';
 
 type FFProbeOutput = {
   format?: {
@@ -16,15 +20,7 @@ type FFProbeOutput = {
   }[];
 };
 
-export type ProbeMediaResult = {
-  codecName: string | undefined;
-  channels: number;
-  sampleFormat: string | undefined;
-  sampleRate: number;
-  durationSeconds: number;
-};
-
-export async function probeMedia(filePath: string): Promise<ProbeMediaResult> {
+async function inspect(filePath: string): Promise<MediaInfo> {
   const { stdout } = await runCommand('ffprobe', [
     '-v',
     'error',
@@ -36,26 +32,22 @@ export async function probeMedia(filePath: string): Promise<ProbeMediaResult> {
   ]);
 
   const result = JSON.parse(stdout) as FFProbeOutput;
-
-  const container = result.format;
-  const audioStream = result?.streams?.find(stream => stream.codec_type === 'audio');
+  const audioStream = result.streams?.find(stream => stream.codec_type === 'audio');
 
   if (!audioStream) {
     throw new Error('Missing audio stream');
   }
 
-  const durationSeconds = Number(audioStream.duration ?? container?.duration);
+  const durationSeconds = Number(audioStream.duration ?? result.format?.duration);
   const sampleRate = Number(audioStream.sample_rate);
   const channels = Number(audioStream.channels);
 
   if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
     throw new Error('Invalid media duration');
   }
-
   if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
     throw new Error('Invalid audio sample rate');
   }
-
   if (!Number.isInteger(channels) || channels <= 0) {
     throw new Error('Invalid audio channel count');
   }
@@ -68,3 +60,36 @@ export async function probeMedia(filePath: string): Promise<ProbeMediaResult> {
     durationSeconds,
   };
 }
+
+async function transcodeToMp3(inputPath: string, outputPath: string): Promise<void> {
+  await runCommand('ffmpeg', [
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-nostdin',
+    '-n',
+    '-i',
+    inputPath,
+    '-map',
+    '0:a:0',
+    '-vn',
+    '-ac',
+    '1',
+    '-ar',
+    String(OUTPUT_SAMPLE_RATE_HZ),
+    '-c:a',
+    'libmp3lame',
+    '-b:a',
+    OUTPUT_BITRATE,
+    '-map_metadata',
+    '-1',
+    '-f',
+    'mp3',
+    outputPath,
+  ]);
+}
+
+export const ffmpegMediaProcessor: MediaProcessor = {
+  inspect,
+  transcodeToMp3,
+};

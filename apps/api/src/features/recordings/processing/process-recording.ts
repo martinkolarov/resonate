@@ -3,8 +3,7 @@ import type { RecordingRepository } from '@/features/recordings/repositories/rec
 import { tmpdir } from 'node:os';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { probeMedia, type ProbeMediaResult } from './probe-media.js';
-import { transcodeToMp3 } from './transcode-to-mp3.js';
+import type { MediaInfo, MediaProcessor } from './media.js';
 
 const MAX_FILE_SIZE_BYTES = 100_000_000;
 const MAX_RECORDING_DURATION_SECONDS = 60 * 60;
@@ -70,15 +69,18 @@ function validateSource(
   return { ok: true, value: { mimeType, sizeBytes } };
 }
 
-async function inspectMedia(inputPath: string): Promise<ValidationResult<ProbeMediaResult>> {
+async function inspectMedia(
+  mediaProcessor: MediaProcessor,
+  inputPath: string
+): Promise<ValidationResult<MediaInfo>> {
   try {
-    return { ok: true, value: await probeMedia(inputPath) };
+    return { ok: true, value: await mediaProcessor.inspect(inputPath) };
   } catch {
     return { ok: false, reason: 'INVALID_MEDIA' };
   }
 }
 
-function validateDuration(media: ProbeMediaResult): ProcessingFailure | undefined {
+function validateDuration(media: MediaInfo): ProcessingFailure | undefined {
   if (media.durationSeconds > MAX_RECORDING_DURATION_SECONDS) {
     return { ok: false, reason: 'MAX_DURATION_EXCEEDED' };
   }
@@ -107,11 +109,16 @@ async function withProcessingWorkspace<T>(
 }
 
 type RecordingProcessorDeps = {
+  mediaProcessor: MediaProcessor;
   objectStorage: ObjectStorage;
   recordings: RecordingRepository;
 };
 
-export function createRecordingProcessor({ objectStorage, recordings }: RecordingProcessorDeps) {
+export function createRecordingProcessor({
+  mediaProcessor,
+  objectStorage,
+  recordings,
+}: RecordingProcessorDeps) {
   return {
     async process(recordingId: string): Promise<ProcessRecordingResult> {
       const recording = await recordings.getById(recordingId);
@@ -129,7 +136,7 @@ export function createRecordingProcessor({ objectStorage, recordings }: Recordin
       return withProcessingWorkspace(recording.id, async paths => {
         await objectStorage.downloadToFile(recording.object_key, paths.input);
 
-        const inspectedMedia = await inspectMedia(paths.input);
+        const inspectedMedia = await inspectMedia(mediaProcessor, paths.input);
         if (!inspectedMedia.ok) {
           return inspectedMedia;
         }
@@ -146,7 +153,7 @@ export function createRecordingProcessor({ objectStorage, recordings }: Recordin
         });
 
         await recordings.updateProcessingStage(recording.id, 'transcoding');
-        await transcodeToMp3(paths.input, paths.output);
+        await mediaProcessor.transcodeToMp3(paths.input, paths.output);
         await verifyOutput(paths.output);
 
         return { ok: true };

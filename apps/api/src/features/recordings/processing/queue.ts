@@ -31,11 +31,15 @@ export function createRecordingProcessingQueue(redis: Redis) {
   };
 }
 
-type RecordingProcessingWorkerDeps = Pick<Infrastructure, 'postgres' | 'objectStorage' | 'redis'>;
+type RecordingProcessingWorkerDeps = Pick<
+  Infrastructure,
+  'mediaProcessor' | 'objectStorage' | 'postgres' | 'redis'
+>;
 
 export function createRecordingProcessingWorker(infrastructure: RecordingProcessingWorkerDeps) {
   const recordings = createRecordingRepository(infrastructure.postgres);
   const processor = createRecordingProcessor({
+    mediaProcessor: infrastructure.mediaProcessor,
     objectStorage: infrastructure.objectStorage,
     recordings,
   });
