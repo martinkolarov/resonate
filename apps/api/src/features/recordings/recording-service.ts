@@ -26,10 +26,10 @@ export function createRecordingService({
     },
 
     async startUpload(userId: string, fileName: string, mimeType: string) {
-      const objectKey = `uploads/${userId}/${crypto.randomUUID()}`;
+      const inputObjectKey = `uploads/${userId}/${crypto.randomUUID()}`;
       const recording = await recordings.create({
         userId,
-        objectKey,
+        inputObjectKey,
         fileName,
         mimeType,
         provider: objectStorage.provider,
@@ -37,7 +37,7 @@ export function createRecordingService({
       if (!recording) {
         throw new Error('Recording could not be created');
       }
-      const uploadTarget = await objectStorage.createUploadTarget(objectKey, mimeType);
+      const uploadTarget = await objectStorage.createUploadTarget(inputObjectKey, mimeType);
       return {
         recordingId: recording.id,
         uploadTarget,

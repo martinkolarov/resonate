@@ -5,13 +5,13 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
   return {
     async create({
       userId,
-      objectKey,
+      inputObjectKey,
       fileName,
       mimeType,
       provider,
     }: {
       userId: string;
-      objectKey: string;
+      inputObjectKey: string;
       fileName?: string;
       mimeType: string;
       provider: string;
@@ -20,7 +20,7 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
         .insertInto('recordings')
         .values({
           user_id: userId,
-          object_key: objectKey,
+          input_object_key: inputObjectKey,
           file_name: fileName,
           mime_type: mimeType,
           provider,

@@ -115,7 +115,7 @@ export function createRecordingProcessor({
         throw new RecordingRejectedError('RECORDING_NOT_FOUND');
       }
       await recordings.updateProcessingStage(recording.id, 'validating');
-      const objectMetadata = await objectStorage.getMetadata(recording.object_key);
+      const objectMetadata = await objectStorage.getMetadata(recording.input_object_key);
 
       const { sizeBytes, mimeType } = validateSource(
         objectMetadata.size,
@@ -123,7 +123,7 @@ export function createRecordingProcessor({
       );
 
       return withProcessingWorkspace(recording.id, async paths => {
-        await objectStorage.downloadToFile(recording.object_key, paths.input);
+        await objectStorage.downloadToFile(recording.input_object_key, paths.input);
 
         let media: MediaInfo;
         try {

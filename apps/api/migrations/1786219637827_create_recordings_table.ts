@@ -11,7 +11,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn('processing_stage', 'text')
     .addColumn('failed_reason', 'text')
     .addColumn('file_name', 'text')
-    .addColumn('object_key', 'text', column => column.notNull().unique())
+    .addColumn('input_object_key', 'text', column => column.notNull().unique())
     .addColumn('provider', 'text', column => column.notNull())
     .addColumn('size_bytes', 'bigint')
     .addColumn('mime_type', 'text')

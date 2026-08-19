@@ -51,7 +51,7 @@ export interface Recordings {
   id: Generated<string>;
   metadata: Generated<Json>;
   mime_type: string | null;
-  object_key: string;
+  input_object_key: string;
   processing_stage: string | null;
   provider: string;
   size_bytes: Int8 | null;
