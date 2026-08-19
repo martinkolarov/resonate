@@ -109,7 +109,7 @@ export function createRecordingProcessor({
   recordings,
 }: RecordingProcessorDeps) {
   return {
-    async process(recordingId: string): Promise<void> {
+    async prepareRecording(recordingId: string): Promise<void> {
       const recording = await recordings.getById(recordingId);
       if (!recording) {
         throw new RecordingRejectedError('RECORDING_NOT_FOUND');

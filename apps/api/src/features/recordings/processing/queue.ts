@@ -52,7 +52,7 @@ export function createRecordingProcessingWorker(infrastructure: RecordingProcess
       try {
         switch (job.name) {
           case 'process-recording': {
-            await processor.process(job.data.recordingId);
+            await processor.prepareRecording(job.data.recordingId);
           }
         }
       } catch (error: unknown) {
