@@ -5,7 +5,7 @@ import { createS3ObjectStorage } from './object-storage/s3-object-storage.js';
 import env from '@/env.js';
 import { createRedis } from './redis.js';
 import { createMongo } from './mongo.js';
-import { ffmpegMediaProcessor } from './media/ffmpeg.js';
+import { createFfmpegMediaProcessor } from './media/ffmpeg-media-processor.js';
 
 export function createInfrastructure() {
   const postgres = createPostgres({ connectionString: env.DATABASE_URL });
@@ -19,7 +19,7 @@ export function createInfrastructure() {
     postgres: postgres.client,
     redis: redis.client,
     mongo: mongo.db,
-    mediaProcessor: ffmpegMediaProcessor,
+    mediaProcessor: createFfmpegMediaProcessor(),
     objectStorage: createS3ObjectStorage({
       bucket: env.AWS_S3_BUCKET,
       endpoint: env.AWS_S3_ENDPOINT,

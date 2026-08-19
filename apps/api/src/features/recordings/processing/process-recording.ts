@@ -1,9 +1,9 @@
 import type { ObjectStorage } from '@/infrastructure/object-storage/object-storage.js';
+import type { MediaInfo, MediaProcessor } from '@/infrastructure/media/media-processor.js';
 import type { RecordingRepository } from '@/features/recordings/repositories/recording.repository.js';
 import { tmpdir } from 'node:os';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { MediaInfo, MediaProcessor } from './media.js';
 
 const MAX_FILE_SIZE_BYTES = 100_000_000;
 const MAX_RECORDING_DURATION_SECONDS = 60 * 60;
