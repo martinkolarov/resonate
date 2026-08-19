@@ -1,5 +1,5 @@
 import { createRecordingBodySchema } from '@resonate/contracts';
-import { createRecordings } from '@/features/recordings/recordings.js';
+import { createRecordingService } from '@/features/recordings/recording-service.js';
 import { createRecordingRepository } from '@/features/recordings/repositories/recording.repository.js';
 import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
@@ -23,7 +23,7 @@ export function createRecordingRoutes({
 }: RecordingRoutesDeps): RecordingRoutes {
   const { postgres, objectStorage, outboxMessages, transactionRunner } = infrastructure;
   const recordingRepository = createRecordingRepository(postgres);
-  const recordings = createRecordings({
+  const recordingService = createRecordingService({
     objectStorage,
     outboxMessages,
     recordings: recordingRepository,
@@ -34,7 +34,7 @@ export function createRecordingRoutes({
   router.use(requireSession);
 
   router.get('/', async (_req, res) => {
-    const results = await recordings.listByUserId(res.locals.user.id);
+    const results = await recordingService.listByUserId(res.locals.user.id);
     return res.json(
       results.map(recording => ({
         id: recording.id,
@@ -54,7 +54,11 @@ export function createRecordingRoutes({
     const { fileName, mimeType } = data;
     const userId = res.locals.user.id;
 
-    const { recordingId, uploadTarget } = await recordings.startUpload(userId, fileName, mimeType);
+    const { recordingId, uploadTarget } = await recordingService.startUpload(
+      userId,
+      fileName,
+      mimeType
+    );
 
     return res.json({
       recordingId,
@@ -65,7 +69,7 @@ export function createRecordingRoutes({
   router.post('/:recordingId/complete-upload', async (req, res) => {
     const { recordingId } = req.params;
     const userId = res.locals.user.id;
-    await recordings.completeUpload(userId, recordingId);
+    await recordingService.completeUpload(userId, recordingId);
     return res.json('OK');
   });
 

@@ -20,7 +20,7 @@ import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
-type AuthenticationDeps = {
+type AuthServiceDeps = {
   emailVerifications: EmailVerificationRepository;
   outboxMessages: OutboxMessageRepository;
   sessions: SessionRepository;
@@ -28,13 +28,13 @@ type AuthenticationDeps = {
   users: UserRepository;
 };
 
-export function createAuthentication({
+export function createAuthService({
   emailVerifications,
   outboxMessages,
   sessions,
   transactionRunner,
   users,
-}: AuthenticationDeps) {
+}: AuthServiceDeps) {
   async function startSession(userId: string, trx?: Transaction<DB>) {
     const token = generateSessionToken();
     const hashedToken = hashToken(token);
@@ -119,4 +119,4 @@ export function createAuthentication({
   };
 }
 
-export type Authentication = ReturnType<typeof createAuthentication>;
+export type AuthService = ReturnType<typeof createAuthService>;

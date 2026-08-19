@@ -1,6 +1,6 @@
 import { Router, type RequestHandler, type Response } from 'express';
 import { signInRequestSchema, signUpRequestSchema } from '@resonate/contracts';
-import { createAuthentication } from '@/features/auth/authentication.js';
+import { createAuthService } from '@/features/auth/auth-service.js';
 import { createRequireSession } from '@/features/auth/middleware/require-session.js';
 import { createEmailVerificationRepository } from '@/features/auth/repositories/email-verification.repository.js';
 import { createSessionRepository } from '@/features/auth/repositories/session.repository.js';
@@ -38,14 +38,14 @@ export function createAuthRoutes({ infrastructure }: AuthRoutesDeps): AuthRoutes
   const emailVerifications = createEmailVerificationRepository(postgres);
   const sessions = createSessionRepository(postgres);
   const users = createUserRepository(postgres);
-  const authentication = createAuthentication({
+  const authService = createAuthService({
     emailVerifications,
     outboxMessages,
     sessions,
     transactionRunner,
     users,
   });
-  const requireSession = createRequireSession(authentication);
+  const requireSession = createRequireSession(authService);
   const router = Router();
 
   router.post('/register', async (req, res) => {
@@ -54,7 +54,7 @@ export function createAuthRoutes({ infrastructure }: AuthRoutesDeps): AuthRoutes
       throw new ValidationError(error);
     }
 
-    const session = await authentication.register(data);
+    const session = await authService.register(data);
     return sendSessionResponse(res, session);
   });
 
@@ -64,7 +64,7 @@ export function createAuthRoutes({ infrastructure }: AuthRoutesDeps): AuthRoutes
       throw new ValidationError(error);
     }
 
-    const session = await authentication.login(data);
+    const session = await authService.login(data);
     return sendSessionResponse(res, session);
   });
 

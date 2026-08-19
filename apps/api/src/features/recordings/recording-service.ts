@@ -3,19 +3,19 @@ import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 import type { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
 import type { ObjectStorage } from '@/infrastructure/object-storage/object-storage.js';
 
-type RecordingsDeps = {
+type RecordingServiceDeps = {
   objectStorage: ObjectStorage;
   outboxMessages: OutboxMessageRepository;
   recordings: RecordingRepository;
   transactionRunner: TransactionRunner;
 };
 
-export function createRecordings({
+export function createRecordingService({
   objectStorage,
   outboxMessages,
   recordings,
   transactionRunner,
-}: RecordingsDeps) {
+}: RecordingServiceDeps) {
   return {
     async listByUserId(userId: string) {
       return await recordings.listByUserId(userId);
@@ -61,4 +61,4 @@ export function createRecordings({
   };
 }
 
-export type Recordings = ReturnType<typeof createRecordings>;
+export type RecordingService = ReturnType<typeof createRecordingService>;
