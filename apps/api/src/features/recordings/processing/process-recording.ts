@@ -69,17 +69,6 @@ function validateSource(
   return { ok: true, value: { mimeType, sizeBytes } };
 }
 
-async function inspectMedia(
-  mediaProcessor: MediaProcessor,
-  inputPath: string
-): Promise<ValidationResult<MediaInfo>> {
-  try {
-    return { ok: true, value: await mediaProcessor.inspect(inputPath) };
-  } catch {
-    return { ok: false, reason: 'INVALID_MEDIA' };
-  }
-}
-
 function validateDuration(media: MediaInfo): ProcessingFailure | undefined {
   if (media.durationSeconds > MAX_RECORDING_DURATION_SECONDS) {
     return { ok: false, reason: 'MAX_DURATION_EXCEEDED' };
@@ -136,12 +125,14 @@ export function createRecordingProcessor({
       return withProcessingWorkspace(recording.id, async paths => {
         await objectStorage.downloadToFile(recording.object_key, paths.input);
 
-        const inspectedMedia = await inspectMedia(mediaProcessor, paths.input);
-        if (!inspectedMedia.ok) {
-          return inspectedMedia;
+        let media: MediaInfo;
+        try {
+          media = await mediaProcessor.inspect(paths.input);
+        } catch {
+          return { ok: false, reason: 'INVALID_MEDIA' };
         }
 
-        const durationFailure = validateDuration(inspectedMedia.value);
+        const durationFailure = validateDuration(media);
         if (durationFailure) {
           return durationFailure;
         }
@@ -149,7 +140,7 @@ export function createRecordingProcessor({
         await recordings.completeValidation(recording.id, {
           sizeBytes: source.value.sizeBytes,
           mimeType: source.value.mimeType,
-          durationMs: Math.round(inspectedMedia.value.durationSeconds * 1000),
+          durationMs: Math.round(media.durationSeconds * 1000),
         });
 
         await recordings.updateProcessingStage(recording.id, 'transcoding');
