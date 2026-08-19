@@ -38,13 +38,6 @@ type ProcessingFailure = {
 
 export type ProcessRecordingResult = { ok: true } | ProcessingFailure;
 
-type ValidatedSource = {
-  mimeType: string;
-  sizeBytes: number;
-};
-
-type ValidationResult<T> = { ok: true; value: T } | ProcessingFailure;
-
 function getBaseMimeType(mimeType: string | undefined) {
   if (typeof mimeType === 'string') {
     return mimeType.split(';', 1)[0].trim().toLowerCase();
@@ -52,12 +45,8 @@ function getBaseMimeType(mimeType: string | undefined) {
   return mimeType;
 }
 
-function validateSource(
-  contentType: string | undefined,
-  sizeBytes: number
-): ValidationResult<ValidatedSource> {
-  const mimeType = getBaseMimeType(contentType);
-  if (!mimeType || !supportedRecordingMimeTypes.has(mimeType)) {
+function validateSource(mimeType: string, sizeBytes: number): ProcessingFailure | undefined {
+  if (!supportedRecordingMimeTypes.has(mimeType)) {
     return { ok: false, reason: 'UNSUPPORTED_CONTENT_TYPE' };
   }
   if (sizeBytes === 0) {
@@ -66,7 +55,6 @@ function validateSource(
   if (sizeBytes > MAX_FILE_SIZE_BYTES) {
     return { ok: false, reason: 'MAX_FILE_SIZE_EXCEEDED' };
   }
-  return { ok: true, value: { mimeType, sizeBytes } };
 }
 
 function validateDuration(media: MediaInfo): ProcessingFailure | undefined {
@@ -114,12 +102,16 @@ export function createRecordingProcessor({
       if (!recording) {
         return { ok: false, reason: 'RECORDING_NOT_FOUND' };
       }
-
       await recordings.updateProcessingStage(recording.id, 'validating');
       const objectMetadata = await objectStorage.getMetadata(recording.object_key);
-      const source = validateSource(objectMetadata.contentType, objectMetadata.size);
-      if (!source.ok) {
-        return source;
+      const mimeType = getBaseMimeType(objectMetadata.contentType);
+      const sizeBytes = objectMetadata.size;
+      if (!mimeType) {
+        return { ok: false, reason: 'UNSUPPORTED_CONTENT_TYPE' };
+      }
+      const sourceFailure = validateSource(mimeType, sizeBytes);
+      if (sourceFailure) {
+        return sourceFailure;
       }
 
       return withProcessingWorkspace(recording.id, async paths => {
@@ -138,8 +130,8 @@ export function createRecordingProcessor({
         }
 
         await recordings.completeValidation(recording.id, {
-          sizeBytes: source.value.sizeBytes,
-          mimeType: source.value.mimeType,
+          sizeBytes,
+          mimeType,
           durationMs: Math.round(media.durationSeconds * 1000),
         });
 
