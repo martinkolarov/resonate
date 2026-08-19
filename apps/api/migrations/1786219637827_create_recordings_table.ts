@@ -23,7 +23,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     )
     .addCheckConstraint(
       'recording_processing_stage_check',
-      sql`processing_stage in ('validating', 'encoding', 'transcribing', 'summarizing')`
+      sql`processing_stage in ('validating', 'transcoding', 'transcribing', 'summarizing')`
     )
     .execute();
 

@@ -68,7 +68,7 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
       return await postgres
         .updateTable('recordings')
         .set({
-          processing_stage: 'encoding',
+          processing_stage: 'transcoding',
           size_bytes: data.sizeBytes,
           mime_type: data.mimeType,
           duration_ms: data.durationMs,

@@ -2,7 +2,7 @@ import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { Queue, UnrecoverableError, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { createRecordingRepository } from '../repositories/recording.repository.js';
-import { createRecordingProcessor } from './process-recording.js';
+import { createRecordingProcessor, RecordingRejectedError } from './process-recording.js';
 
 type ProcessRecordingJobData = {
   recordingId: string;
@@ -52,19 +52,19 @@ export function createRecordingProcessingWorker(infrastructure: RecordingProcess
       try {
         switch (job.name) {
           case 'process-recording': {
-            const result = await processor.process(job.data.recordingId);
-            if (!result.ok) {
-              throw new UnrecoverableError(result.reason);
-            }
-            break;
+            await processor.process(job.data.recordingId);
           }
         }
       } catch (error: unknown) {
-        if (error instanceof UnrecoverableError) {
-          await recordings.markFailed(job.data.recordingId, error.message);
-        } else if (isFinalAttempt) {
+        if (error instanceof RecordingRejectedError) {
+          await recordings.markFailed(job.data.recordingId, JSON.stringify(error));
+          throw new UnrecoverableError(error.reason);
+        }
+
+        if (isFinalAttempt) {
           await recordings.markFailed(job.data.recordingId, 'PROCESSING_FAILED');
         }
+
         throw error;
       }
     },

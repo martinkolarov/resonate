@@ -23,20 +23,27 @@ export const SUPPORTED_RECORDING_MIME_TYPES = [
 
 const supportedRecordingMimeTypes: ReadonlySet<string> = new Set(SUPPORTED_RECORDING_MIME_TYPES);
 
-type ProcessingFailureReason =
+type RecordingRejectedReason =
   | 'RECORDING_NOT_FOUND'
   | 'UNSUPPORTED_CONTENT_TYPE'
   | 'EMPTY_FILE'
   | 'MAX_FILE_SIZE_EXCEEDED'
   | 'MAX_DURATION_EXCEEDED'
-  | 'INVALID_MEDIA';
+  | 'INSPECTION_FAILED'
+  | 'TRANSCODING_FAILED';
 
-type ProcessingFailure = {
-  ok: false;
-  reason: ProcessingFailureReason;
-};
+export class RecordingRejectedError extends Error {
+  constructor(public readonly reason: RecordingRejectedReason) {
+    super(reason);
+  }
 
-export type ProcessRecordingResult = { ok: true } | ProcessingFailure;
+  toJSON() {
+    return {
+      type: 'RECORDING_REJECTED',
+      reason: this.reason,
+    };
+  }
+}
 
 function getBaseMimeType(mimeType: string | undefined) {
   if (typeof mimeType === 'string') {
@@ -45,9 +52,26 @@ function getBaseMimeType(mimeType: string | undefined) {
   return mimeType;
 }
 
-function validateDuration(media: MediaInfo): ProcessingFailure | undefined {
+function validateSource(sizeBytes: number, mimeType: string | undefined) {
+  const baseMimeType = getBaseMimeType(mimeType);
+  if (!baseMimeType || !supportedRecordingMimeTypes.has(baseMimeType)) {
+    throw new RecordingRejectedError('UNSUPPORTED_CONTENT_TYPE');
+  }
+  if (sizeBytes === 0) {
+    throw new RecordingRejectedError('EMPTY_FILE');
+  }
+  if (sizeBytes > MAX_FILE_SIZE_BYTES) {
+    throw new RecordingRejectedError('MAX_FILE_SIZE_EXCEEDED');
+  }
+  return {
+    mimeType: baseMimeType,
+    sizeBytes,
+  };
+}
+
+function validateDuration(media: MediaInfo) {
   if (media.durationSeconds > MAX_RECORDING_DURATION_SECONDS) {
-    return { ok: false, reason: 'MAX_DURATION_EXCEEDED' };
+    throw new RecordingRejectedError('MAX_DURATION_EXCEEDED');
   }
 }
 
@@ -85,24 +109,18 @@ export function createRecordingProcessor({
   recordings,
 }: RecordingProcessorDeps) {
   return {
-    async process(recordingId: string): Promise<ProcessRecordingResult> {
+    async process(recordingId: string): Promise<void> {
       const recording = await recordings.getById(recordingId);
       if (!recording) {
-        return { ok: false, reason: 'RECORDING_NOT_FOUND' };
+        throw new RecordingRejectedError('RECORDING_NOT_FOUND');
       }
       await recordings.updateProcessingStage(recording.id, 'validating');
       const objectMetadata = await objectStorage.getMetadata(recording.object_key);
-      const mimeType = getBaseMimeType(objectMetadata.contentType);
-      const sizeBytes = objectMetadata.size;
-      if (!mimeType || !supportedRecordingMimeTypes.has(mimeType)) {
-        return { ok: false, reason: 'UNSUPPORTED_CONTENT_TYPE' };
-      }
-      if (sizeBytes === 0) {
-        return { ok: false, reason: 'EMPTY_FILE' };
-      }
-      if (sizeBytes > MAX_FILE_SIZE_BYTES) {
-        return { ok: false, reason: 'MAX_FILE_SIZE_EXCEEDED' };
-      }
+
+      const { sizeBytes, mimeType } = validateSource(
+        objectMetadata.size,
+        objectMetadata.contentType
+      );
 
       return withProcessingWorkspace(recording.id, async paths => {
         await objectStorage.downloadToFile(recording.object_key, paths.input);
@@ -111,13 +129,10 @@ export function createRecordingProcessor({
         try {
           media = await mediaProcessor.inspect(paths.input);
         } catch {
-          return { ok: false, reason: 'INVALID_MEDIA' };
+          throw new RecordingRejectedError('INSPECTION_FAILED');
         }
 
-        const durationFailure = validateDuration(media);
-        if (durationFailure) {
-          return durationFailure;
-        }
+        validateDuration(media);
 
         await recordings.completeValidation(recording.id, {
           sizeBytes,
@@ -125,11 +140,13 @@ export function createRecordingProcessor({
           durationMs: Math.round(media.durationSeconds * 1000),
         });
 
-        await recordings.updateProcessingStage(recording.id, 'transcoding');
-        await mediaProcessor.transcodeToMp3(paths.input, paths.output);
-        await verifyOutput(paths.output);
+        try {
+          await mediaProcessor.transcodeToMp3(paths.input, paths.output);
+        } catch {
+          throw new RecordingRejectedError('TRANSCODING_FAILED');
+        }
 
-        return { ok: true };
+        await verifyOutput(paths.output);
       });
     },
   };
