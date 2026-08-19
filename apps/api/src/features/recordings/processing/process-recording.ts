@@ -45,18 +45,6 @@ function getBaseMimeType(mimeType: string | undefined) {
   return mimeType;
 }
 
-function validateSource(mimeType: string, sizeBytes: number): ProcessingFailure | undefined {
-  if (!supportedRecordingMimeTypes.has(mimeType)) {
-    return { ok: false, reason: 'UNSUPPORTED_CONTENT_TYPE' };
-  }
-  if (sizeBytes === 0) {
-    return { ok: false, reason: 'EMPTY_FILE' };
-  }
-  if (sizeBytes > MAX_FILE_SIZE_BYTES) {
-    return { ok: false, reason: 'MAX_FILE_SIZE_EXCEEDED' };
-  }
-}
-
 function validateDuration(media: MediaInfo): ProcessingFailure | undefined {
   if (media.durationSeconds > MAX_RECORDING_DURATION_SECONDS) {
     return { ok: false, reason: 'MAX_DURATION_EXCEEDED' };
@@ -106,12 +94,14 @@ export function createRecordingProcessor({
       const objectMetadata = await objectStorage.getMetadata(recording.object_key);
       const mimeType = getBaseMimeType(objectMetadata.contentType);
       const sizeBytes = objectMetadata.size;
-      if (!mimeType) {
+      if (!mimeType || !supportedRecordingMimeTypes.has(mimeType)) {
         return { ok: false, reason: 'UNSUPPORTED_CONTENT_TYPE' };
       }
-      const sourceFailure = validateSource(mimeType, sizeBytes);
-      if (sourceFailure) {
-        return sourceFailure;
+      if (sizeBytes === 0) {
+        return { ok: false, reason: 'EMPTY_FILE' };
+      }
+      if (sizeBytes > MAX_FILE_SIZE_BYTES) {
+        return { ok: false, reason: 'MAX_FILE_SIZE_EXCEEDED' };
       }
 
       return withProcessingWorkspace(recording.id, async paths => {
