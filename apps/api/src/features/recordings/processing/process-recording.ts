@@ -82,13 +82,13 @@ async function verifyOutput(outputPath: string) {
   }
 }
 
-async function withProcessingWorkspace<T>(
+async function withTemporaryWorkspace<T>(
   recordingId: string,
-  process: (paths: { input: string; output: string }) => Promise<T>
+  run: (paths: { input: string; output: string }) => Promise<T>
 ) {
   const directory = await mkdtemp(join(tmpdir(), `recording-${recordingId}-`));
   try {
-    return await process({
+    return await run({
       input: join(directory, 'input'),
       output: join(directory, 'output'),
     });
@@ -122,7 +122,7 @@ export function createRecordingProcessor({
         objectMetadata.contentType
       );
 
-      return withProcessingWorkspace(recording.id, async paths => {
+      return withTemporaryWorkspace(recording.id, async paths => {
         await objectStorage.downloadToFile(recording.input_object_key, paths.input);
 
         let media: MediaInfo;
