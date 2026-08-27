@@ -4,11 +4,11 @@ import type { Redis } from 'ioredis';
 import { createRecordingRepository } from '../repositories/recording.repository.js';
 import { createRecordingProcessor, RecordingRejectedError } from './process-recording.js';
 
-type ProcessRecordingJobData = {
+type PrepareRecordingJobData = {
   recordingId: string;
 };
-type RecordingJobData = ProcessRecordingJobData;
-type RecordingJobName = 'process-recording';
+type RecordingJobData = PrepareRecordingJobData;
+type RecordingJobName = 'prepare-recording';
 
 export function createRecordingProcessingQueue(redis: Redis) {
   const queue = new Queue<RecordingJobData, unknown, RecordingJobName>('recordings', {
@@ -22,8 +22,8 @@ export function createRecordingProcessingQueue(redis: Redis) {
     },
   });
   return {
-    async enqueueProcessRecording(data: ProcessRecordingJobData, jobId: string) {
-      await queue.add('process-recording', data, { jobId });
+    async enqueuePrepareRecording(data: PrepareRecordingJobData, jobId: string) {
+      await queue.add('prepare-recording', data, { jobId });
     },
     async close() {
       await queue.close();
@@ -51,7 +51,7 @@ export function createRecordingProcessingWorker(infrastructure: RecordingProcess
       const isFinalAttempt = job.attemptsMade + 1 >= attempts;
       try {
         switch (job.name) {
-          case 'process-recording': {
+          case 'prepare-recording': {
             await processor.prepareRecording(job.data.recordingId);
           }
         }

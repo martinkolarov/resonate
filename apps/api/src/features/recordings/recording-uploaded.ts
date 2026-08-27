@@ -15,5 +15,5 @@ export async function handleRecordingUploaded(
   message: RecordingUploaded,
   recordingQueue: RecordingProcessingQueue
 ) {
-  await recordingQueue.enqueueProcessRecording(message.payload, message.id);
+  await recordingQueue.enqueuePrepareRecording(message.payload, message.id);
 }
