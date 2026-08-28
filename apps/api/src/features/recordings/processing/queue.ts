@@ -2,13 +2,14 @@ import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { Queue, UnrecoverableError, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { createRecordingRepository } from '../repositories/recording.repository.js';
-import { createRecordingProcessor, RecordingRejectedError } from './process-recording.js';
+import { createPrepareRecording } from './prepare-recording.js';
+import { RecordingRejectedError, RecordingStateTransitionError } from './processing-errors.js';
 
 type PrepareRecordingJobData = {
   recordingId: string;
 };
 type RecordingJobData = PrepareRecordingJobData;
-type RecordingJobName = 'prepare-recording';
+type RecordingJobName = 'prepare-recording' | 'transcribe-recording' | 'summarize-recording';
 
 export function createRecordingProcessingQueue(redis: Redis) {
   const queue = new Queue<RecordingJobData, unknown, RecordingJobName>('recordings', {
@@ -38,7 +39,7 @@ type RecordingProcessingWorkerDeps = Pick<
 
 export function createRecordingProcessingWorker(infrastructure: RecordingProcessingWorkerDeps) {
   const recordings = createRecordingRepository(infrastructure.postgres);
-  const processor = createRecordingProcessor({
+  const prepareRecording = createPrepareRecording({
     mediaProcessor: infrastructure.mediaProcessor,
     objectStorage: infrastructure.objectStorage,
     recordings,
@@ -52,13 +53,25 @@ export function createRecordingProcessingWorker(infrastructure: RecordingProcess
       try {
         switch (job.name) {
           case 'prepare-recording': {
-            await processor.prepareRecording(job.data.recordingId);
+            await prepareRecording(job.data.recordingId);
+            break;
+          }
+          case 'transcribe-recording': {
+            console.log('Transcribing...');
+            break;
+          }
+          case 'summarize-recording': {
+            console.log('Summarizing...');
+            break;
           }
         }
       } catch (error: unknown) {
         if (error instanceof RecordingRejectedError) {
           await recordings.markFailed(job.data.recordingId, JSON.stringify(error));
           throw new UnrecoverableError(error.reason);
+        }
+        if (error instanceof RecordingStateTransitionError) {
+          throw new UnrecoverableError(error.message);
         }
 
         if (isFinalAttempt) {

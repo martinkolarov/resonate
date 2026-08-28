@@ -57,6 +57,20 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
         .execute();
     },
 
+    async startProcessing(recordingId: string) {
+      return await postgres
+        .updateTable('recordings')
+        .set({
+          status: 'processing',
+          processing_stage: 'validating',
+        })
+        .where('id', '=', recordingId)
+        .where('status', '=', 'uploaded')
+        .where('processing_stage', 'is', null)
+        .returningAll()
+        .executeTakeFirst();
+    },
+
     async completeValidation(
       recordingId: string,
       data: {
@@ -74,17 +88,24 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
           duration_ms: data.durationMs,
         })
         .where('id', '=', recordingId)
-        .execute();
+        .where('status', '=', 'processing')
+        .where('processing_stage', '=', 'validating')
+        .returningAll()
+        .executeTakeFirst();
     },
 
-    async updateProcessingStage(recordingId: string, newProcessingStage: string) {
+    async completeTranscoding(recordingId: string, outputObjectKey: string) {
       return await postgres
         .updateTable('recordings')
         .set({
-          processing_stage: newProcessingStage,
+          processing_stage: 'transcribing',
+          output_object_key: outputObjectKey,
         })
         .where('id', '=', recordingId)
-        .execute();
+        .where('status', '=', 'processing')
+        .where('processing_stage', '=', 'transcoding')
+        .returningAll()
+        .executeTakeFirst();
     },
 
     async listByUserId(userId: string) {

@@ -8,7 +8,7 @@ import type { ObjectStorage } from './object-storage.js';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
 
 export function createS3ObjectStorage({
   bucket,
@@ -56,6 +56,16 @@ export function createS3ObjectStorage({
         method: 'PUT',
         expiresAt,
       };
+    },
+
+    async uploadFromFile(key, sourcePath) {
+      await client.send(
+        new PutObjectCommand({
+          Key: key,
+          Bucket: bucket,
+          Body: createReadStream(sourcePath),
+        })
+      );
     },
 
     async downloadToFile(key, destinationPath) {
