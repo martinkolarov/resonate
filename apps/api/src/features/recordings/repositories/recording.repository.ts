@@ -53,12 +53,13 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
       return await postgres
         .updateTable('recordings')
         .set({ status: 'failed', failed_reason: message })
+        .where('status', '=', 'processing')
         .where('id', '=', recordingId)
         .execute();
     },
 
-    async startProcessing(recordingId: string) {
-      return await postgres
+    async startValidation(recordingId: string, trx?: Transaction<DB>) {
+      return await (trx ?? postgres)
         .updateTable('recordings')
         .set({
           status: 'processing',

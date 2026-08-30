@@ -1,9 +1,9 @@
 import type { EmailSender } from '@/infrastructure/email/email-sender.js';
 import z from 'zod';
 
-export const sendEmailMessageSchema = z.object({
+export const sendVerificationEmailMessageSchema = z.object({
   id: z.string(),
-  type: z.literal('send-email'),
+  type: z.literal('auth.send-verification-email'),
   payload: z.object({
     to: z.string(),
     subject: z.string(),
@@ -11,9 +11,12 @@ export const sendEmailMessageSchema = z.object({
   }),
 });
 
-type SendEmailMessage = z.infer<typeof sendEmailMessageSchema>;
+type SendVerificationEmailMessage = z.infer<typeof sendVerificationEmailMessageSchema>;
 
-export async function handleSendEmail(message: SendEmailMessage, emailSender: EmailSender) {
+export async function handleSendVerificationEmail(
+  message: SendVerificationEmailMessage,
+  emailSender: EmailSender
+) {
   await emailSender.send(
     message.payload.to,
     message.payload.subject,

@@ -79,7 +79,7 @@ export function createAuthService({
         await emailVerifications.upsert(user.id, hashToken(emailVerificationToken), trx);
 
         await outboxMessages.enqueue(
-          'send-email',
+          'auth.send-verification-email',
           {
             to: user.email,
             subject: 'Verify your email',

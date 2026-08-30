@@ -46,16 +46,21 @@ export function createRecordingService({
 
     async completeUpload(userId: string, recordingId: string) {
       return transactionRunner.run(async trx => {
-        const recording = await recordings.markUploaded(userId, recordingId, trx);
-        if (recording) {
-          await outboxMessages.enqueue(
-            'recording-uploaded',
-            {
-              recordingId,
-            },
-            trx
-          );
+        const uploadedRecording = await recordings.markUploaded(userId, recordingId, trx);
+        if (!uploadedRecording) {
+          throw new Error(`Could not mark recording ${recordingId} as uploaded`);
         }
+        const validatingRecording = await recordings.startValidation(recordingId, trx);
+        if (!validatingRecording) {
+          throw new Error(`Could not mark recording ${recordingId} as validating`);
+        }
+        await outboxMessages.enqueue(
+          'recording.uploaded',
+          {
+            recordingId,
+          },
+          trx
+        );
       });
     },
   };
