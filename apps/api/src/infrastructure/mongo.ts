@@ -20,6 +20,13 @@ export function createMongo({ uri, databaseName }: MongoConfig) {
     async connect() {
       await client.connect();
       await db.command({ ping: 1 });
+      await db.collection('transcripts').createIndex(
+        { recordingId: 1 },
+        {
+          name: 'transcripts_recording_id_unique',
+          unique: true,
+        }
+      );
       mongoLogger.info({ databaseName }, 'MongoDB connected');
     },
 

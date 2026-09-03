@@ -26,6 +26,43 @@ export function createS3ObjectStorage({
     requestChecksumCalculation: 'WHEN_REQUIRED',
   });
 
+  async function getUploadUrl({
+    key,
+    contentType,
+    expiresInSeconds,
+    options,
+  }: {
+    key: string;
+    contentType: string;
+    expiresInSeconds: number;
+    options?: Record<string, string | number>;
+  }) {
+    const url = await getSignedUrl(
+      client,
+      new PutObjectCommand({
+        Key: key,
+        Bucket: bucket,
+        ContentType: contentType,
+      }),
+      {
+        expiresIn: expiresInSeconds,
+        ...options,
+      }
+    );
+    return url;
+  }
+
+  async function getDownloadUrl(key: string) {
+    const url = await getSignedUrl(
+      client,
+      new GetObjectCommand({
+        Key: key,
+        Bucket: bucket,
+      })
+    );
+    return url;
+  }
+
   return {
     provider: 's3',
 
@@ -40,17 +77,9 @@ export function createS3ObjectStorage({
     },
 
     async createUploadTarget(key, contentType) {
-      const expirationSeconds = 10 * 60; // 10 minutes
-      const expiresAt = new Date(Date.now() + expirationSeconds * 1000);
-      const url = await getSignedUrl(
-        client,
-        new PutObjectCommand({
-          Key: key,
-          Bucket: bucket,
-          ContentType: contentType,
-        }),
-        { expiresIn: expirationSeconds }
-      );
+      const expiresInSeconds = 10 * 60; // 10 minutes
+      const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
+      const url = await getUploadUrl({ key, contentType, expiresInSeconds });
       return {
         url,
         method: 'PUT',
@@ -82,5 +111,7 @@ export function createS3ObjectStorage({
 
       await pipeline(response.Body, createWriteStream(destinationPath, { flags: 'wx' }));
     },
+
+    getDownloadUrl,
   };
 }

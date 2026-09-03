@@ -4,6 +4,8 @@ import { createRecordingRepository } from '../repositories/recording.repository.
 import { RecordingRejectedError, RecordingStateTransitionError } from './errors.js';
 import { createTranscodeRecording } from './transcode-recording.js';
 import { createValidateRecording } from './validate-recording.js';
+import { createTranscribeRecording } from './transcribe-recording.js';
+import { createTranscriptRepository } from '../repositories/transcript.repository.js';
 
 type ValidateRecordingJobData = {
   recordingId: string;
@@ -29,7 +31,7 @@ type RecordingJobName =
 
 type RecordingPipelineDeps = Pick<
   Infrastructure,
-  'mediaProcessor' | 'objectStorage' | 'postgres' | 'redis'
+  'mediaProcessor' | 'objectStorage' | 'postgres' | 'redis' | 'mongo'
 >;
 
 export function createRecordingPipeline(infrastructure: RecordingPipelineDeps) {
@@ -64,6 +66,8 @@ export function createRecordingPipeline(infrastructure: RecordingPipelineDeps) {
     });
   }
   const recordings = createRecordingRepository(infrastructure.postgres);
+  const transcripts = createTranscriptRepository(infrastructure.mongo);
+
   const validateRecording = createValidateRecording({
     mediaProcessor: infrastructure.mediaProcessor,
     objectStorage: infrastructure.objectStorage,
@@ -73,6 +77,11 @@ export function createRecordingPipeline(infrastructure: RecordingPipelineDeps) {
     mediaProcessor: infrastructure.mediaProcessor,
     objectStorage: infrastructure.objectStorage,
     recordings,
+  });
+  const transcribeRecording = createTranscribeRecording({
+    objectStorage: infrastructure.objectStorage,
+    recordings,
+    transcripts,
   });
   const worker = new Worker<RecordingJobData, unknown, RecordingJobName>(
     'recordings',
@@ -88,11 +97,15 @@ export function createRecordingPipeline(infrastructure: RecordingPipelineDeps) {
             break;
           }
           case 'transcode-recording': {
-            await transcodeRecording(job.data.recordingId);
+            const recordingId = job.data.recordingId;
+            await transcodeRecording(recordingId);
+            await enqueueTranscribeRecording({ recordingId });
             break;
           }
           case 'transcribe-recording': {
-            console.log('Transcribing...');
+            const recordingId = job.data.recordingId;
+            await transcribeRecording(recordingId);
+            await enqueueSummarizeRecording({ recordingId });
             break;
           }
           case 'summarize-recording': {
@@ -110,7 +123,7 @@ export function createRecordingPipeline(infrastructure: RecordingPipelineDeps) {
         }
 
         if (isFinalAttempt) {
-          await recordings.markFailed(job.data.recordingId, 'PROCESSING_FAILED');
+          await recordings.markFailed(job.data.recordingId, JSON.stringify(error));
         }
 
         throw error;

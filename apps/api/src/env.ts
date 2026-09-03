@@ -22,6 +22,8 @@ const envSchema = z.object({
   AWS_REGION: z.string(),
   AWS_S3_BUCKET: z.string(),
   AWS_S3_ENDPOINT: z.url().optional(),
+  OPENAI_API_KEY: z.string(),
+  ELEVENLABS_API_KEY: z.string(),
 });
 
 export default envSchema.parse(process.env);
