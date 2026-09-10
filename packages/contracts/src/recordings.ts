@@ -15,7 +15,7 @@ export type ListRecordingsResponse = z.infer<typeof listRecordingsResponseSchema
 
 export const createRecordingBodySchema = z.object({
   fileName: z.string(),
-  mimeType: z.string(),
+  contentType: z.string(),
 });
 
 export type CreateRecordingBody = z.infer<typeof createRecordingBodySchema>;

@@ -1,12 +1,14 @@
 import type { OutboxMessageRepository } from './outbox-message.repository.js';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-export type Dispatch = (message: unknown) => Promise<void>;
+export type OutboxHandlers = {
+  [key: string]: (message: { id: string; type: string; payload: unknown }) => Promise<void>;
+};
 
 export function createOutboxWorker(outboxMessages: OutboxMessageRepository) {
-  let loopPromise: Promise<void> | undefined;
+  let handlePromise: Promise<void> | undefined;
   const abortController = new AbortController();
-  async function loop(dispatch: Dispatch) {
+  async function handle(outboxHandlers: OutboxHandlers) {
     while (!abortController.signal.aborted) {
       const messages = await outboxMessages.claimAvailable(1);
 
@@ -24,7 +26,11 @@ export function createOutboxWorker(outboxMessages: OutboxMessageRepository) {
 
       for (const { id, type, payload } of messages) {
         try {
-          await dispatch({
+          const handler = outboxHandlers[type];
+          if (!handler) {
+            throw new Error(`Invalid message type: ${type}`);
+          }
+          await handler({
             id,
             type,
             payload: JSON.parse(payload),
@@ -39,16 +45,16 @@ export function createOutboxWorker(outboxMessages: OutboxMessageRepository) {
     }
   }
   return {
-    async run(dispatch: Dispatch) {
-      if (loopPromise) {
+    async run(outboxHandlers: OutboxHandlers) {
+      if (handlePromise) {
         throw new Error('Outbox worker is already running');
       }
-      loopPromise = loop(dispatch);
-      await loopPromise;
+      handlePromise = handle(outboxHandlers);
+      await handlePromise;
     },
     async close() {
       abortController.abort();
-      await loopPromise;
+      await handlePromise;
     },
   };
 }

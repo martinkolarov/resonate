@@ -37,13 +37,14 @@ export interface Recordings {
   failed_reason: string | null;
   file_name: string | null;
   id: Generated<string>;
+  input_mime_type: string | null;
   input_object_key: string;
-  mime_type: string | null;
+  output_mime_type: string | null;
   output_object_key: string | null;
   processing_stage: string | null;
-  provider: string;
   size_bytes: Int8 | null;
   status: Generated<string>;
+  storage_provider: string;
   user_id: string;
 }
 

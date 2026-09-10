@@ -92,8 +92,7 @@ export function createTranscribeRecording({
         });
       }
     }
-    await transcripts.create({
-      recordingId: recording.id,
+    await transcripts.upsert(recordingId, {
       model: 'scribe_v2',
       provider: 'elevenlabs',
       languageCode: language_code,

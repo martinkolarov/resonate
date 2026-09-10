@@ -51,13 +51,13 @@ export function createRecordingRoutes({
       throw new ValidationError(error);
     }
 
-    const { fileName, mimeType } = data;
+    const { fileName, contentType } = data;
     const userId = res.locals.user.id;
 
     const { recordingId, uploadTarget } = await recordingService.startUpload(
       userId,
       fileName,
-      mimeType
+      contentType
     );
 
     return res.json({

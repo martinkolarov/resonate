@@ -20,7 +20,7 @@ export const authSessionResponseSchema = z.object({
     id: z.uuid(),
     email: z.email(),
     name: z.string(),
-    email_verified_at: z.date().nullable(),
+    email_verified_at: z.iso.datetime().nullable(),
   }),
 });
 

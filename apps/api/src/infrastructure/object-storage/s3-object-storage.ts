@@ -87,12 +87,13 @@ export function createS3ObjectStorage({
       };
     },
 
-    async uploadFromFile(key, sourcePath) {
+    async uploadFromFile(key, sourcePath, contentType: string) {
       await client.send(
         new PutObjectCommand({
           Key: key,
           Bucket: bucket,
           Body: createReadStream(sourcePath),
+          ContentType: contentType,
         })
       );
     },

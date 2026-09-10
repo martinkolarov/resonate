@@ -50,11 +50,12 @@ export function createTranscodeRecording({
       }
 
       const transcodedObjectKey = `recordings/${recordingId}`;
-      await objectStorage.uploadFromFile(transcodedObjectKey, transcodedFilePath);
+      await objectStorage.uploadFromFile(transcodedObjectKey, transcodedFilePath, 'audio/mpeg');
 
       const transcodedRecording = await recordings.completeTranscoding(
         recordingId,
-        transcodedObjectKey
+        transcodedObjectKey,
+        'audio/mpeg'
       );
 
       if (!transcodedRecording) {

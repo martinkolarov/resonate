@@ -7,14 +7,12 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
       userId,
       inputObjectKey,
       fileName,
-      mimeType,
-      provider,
+      storageProvider,
     }: {
       userId: string;
       inputObjectKey: string;
       fileName?: string;
-      mimeType: string;
-      provider: string;
+      storageProvider: string;
     }) {
       return await postgres
         .insertInto('recordings')
@@ -22,8 +20,7 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
           user_id: userId,
           input_object_key: inputObjectKey,
           file_name: fileName,
-          mime_type: mimeType,
-          provider,
+          storage_provider: storageProvider,
         })
         .returning('id')
         .executeTakeFirst();
@@ -76,7 +73,7 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
       recordingId: string,
       data: {
         sizeBytes: number;
-        mimeType: string;
+        inputMimeType: string;
         durationMs: number;
       }
     ) {
@@ -85,7 +82,7 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
         .set({
           processing_stage: 'transcoding',
           size_bytes: data.sizeBytes,
-          mime_type: data.mimeType,
+          input_mime_type: data.inputMimeType,
           duration_ms: data.durationMs,
         })
         .where('id', '=', recordingId)
@@ -95,12 +92,17 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
         .executeTakeFirst();
     },
 
-    async completeTranscoding(recordingId: string, outputObjectKey: string) {
+    async completeTranscoding(
+      recordingId: string,
+      outputObjectKey: string,
+      outputMimeType: string
+    ) {
       return await postgres
         .updateTable('recordings')
         .set({
           processing_stage: 'transcribing',
           output_object_key: outputObjectKey,
+          output_mime_type: outputMimeType,
         })
         .where('id', '=', recordingId)
         .where('status', '=', 'processing')

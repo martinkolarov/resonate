@@ -18,4 +18,6 @@ export type TranscriptDocument = {
   languageCode: string;
   text: string;
   segments: TranscriptSegment[];
+  createdAt: Date;
+  updatedAt?: Date;
 };

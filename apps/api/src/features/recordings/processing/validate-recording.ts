@@ -82,7 +82,7 @@ export function createValidateRecording({
 
       const validatedRecording = await recordings.completeValidation(recording.id, {
         sizeBytes: objectMetadata.size,
-        mimeType,
+        inputMimeType: mimeType,
         durationMs: Math.round(media.durationSeconds * 1000),
       });
 

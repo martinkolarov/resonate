@@ -29,7 +29,7 @@ export default function RecordingsPage() {
     try {
       const { recordingId, uploadTarget } = await createRecordingMutation.mutateAsync({
         fileName: file.name,
-        mimeType: file.type,
+        contentType: file.type,
       });
       const { error } = await fetchRetry(uploadTarget.url, 2, {
         method: uploadTarget.method,

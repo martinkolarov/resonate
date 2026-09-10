@@ -14,7 +14,7 @@ export interface ObjectStorage {
   provider: string;
   createUploadTarget(key: string, contentType: string): Promise<UploadTarget>;
   getMetadata(key: string): Promise<ObjectMetadata>;
-  uploadFromFile(key: string, sourcePath: string): Promise<void>;
+  uploadFromFile(key: string, sourcePath: string, contentType: string): Promise<void>;
   downloadToFile(key: string, destinationPath: string): Promise<void>;
   getDownloadUrl(key: string): Promise<string>;
 }

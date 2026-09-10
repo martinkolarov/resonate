@@ -29,7 +29,48 @@ export function createTranscriptRepository(mongo: Db) {
         languageCode,
         text,
         segments,
+        createdAt: new Date(),
       });
+    },
+
+    async upsert(
+      recordingId: string,
+      {
+        provider,
+        model,
+        audioDurationSeconds,
+        languageCode,
+        text,
+        segments,
+      }: {
+        provider: string;
+        model: string;
+        audioDurationSeconds: number;
+        languageCode: string;
+        text: string;
+        segments: TranscriptSegment[];
+      }
+    ) {
+      const now = new Date();
+      await transcripts.updateOne(
+        { recordingId },
+        {
+          $set: {
+            recordingId,
+            provider,
+            model,
+            audioDurationSeconds,
+            languageCode,
+            text,
+            segments,
+            updatedAt: now,
+          },
+          $setOnInsert: {
+            createdAt: now,
+          },
+        },
+        { upsert: true }
+      );
     },
   };
 }
