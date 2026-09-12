@@ -75,9 +75,10 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
         sizeBytes: number;
         inputMimeType: string;
         durationMs: number;
-      }
+      },
+      trx?: Transaction<DB>
     ) {
-      return await postgres
+      return await (trx ?? postgres)
         .updateTable('recordings')
         .set({
           processing_stage: 'transcoding',
@@ -95,9 +96,10 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
     async completeTranscoding(
       recordingId: string,
       outputObjectKey: string,
-      outputMimeType: string
+      outputMimeType: string,
+      trx?: Transaction<DB>
     ) {
-      return await postgres
+      return await (trx ?? postgres)
         .updateTable('recordings')
         .set({
           processing_stage: 'transcribing',
@@ -107,6 +109,19 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
         .where('id', '=', recordingId)
         .where('status', '=', 'processing')
         .where('processing_stage', '=', 'transcoding')
+        .returningAll()
+        .executeTakeFirst();
+    },
+
+    async completeTranscription(recordingId: string, trx?: Transaction<DB>) {
+      return await (trx ?? postgres)
+        .updateTable('recordings')
+        .set({
+          processing_stage: 'summarizing',
+        })
+        .where('id', '=', recordingId)
+        .where('status', '=', 'processing')
+        .where('processing_stage', '=', 'transcribing')
         .returningAll()
         .executeTakeFirst();
     },

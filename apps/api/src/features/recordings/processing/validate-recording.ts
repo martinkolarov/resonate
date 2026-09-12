@@ -1,9 +1,11 @@
 import { MediaInfo, MediaProcessor } from '@/infrastructure/media/media-processor.js';
 import { ObjectStorage } from '@/infrastructure/object-storage/object-storage.js';
 import { RecordingRepository } from '../repositories/recording.repository.js';
-import { RecordingRejectedError, RecordingStateTransitionError } from './errors.js';
+import { RecordingRejectedError } from './errors.js';
 import { withRecordingWorkspace } from './with-recording-workspace.js';
 import { join } from 'node:path';
+import { TransactionRunner } from '@/infrastructure/transaction-runner.js';
+import type { RecordingOutboxPublisher } from '../outbox.js';
 
 const MAX_FILE_SIZE_BYTES = 100_000_000; // 100 MB
 const MAX_RECORDING_DURATION_SECONDS = 60 * 60; // 60 minutes
@@ -33,12 +35,16 @@ function getMimeType(mimeType: string | undefined) {
 type ValidateRecordingDeps = {
   mediaProcessor: MediaProcessor;
   objectStorage: ObjectStorage;
+  transactionRunner: TransactionRunner;
+  recordingOutbox: RecordingOutboxPublisher;
   recordings: RecordingRepository;
 };
 
 export function createValidateRecording({
   mediaProcessor,
   objectStorage,
+  transactionRunner,
+  recordingOutbox,
   recordings,
 }: ValidateRecordingDeps) {
   return async function validateRecording(recordingId: string) {
@@ -80,15 +86,27 @@ export function createValidateRecording({
         throw new RecordingRejectedError('MAX_DURATION_EXCEEDED');
       }
 
-      const validatedRecording = await recordings.completeValidation(recording.id, {
-        sizeBytes: objectMetadata.size,
-        inputMimeType: mimeType,
-        durationMs: Math.round(media.durationSeconds * 1000),
+      await transactionRunner.run(async trx => {
+        const validatedRecording = await recordings.completeValidation(
+          recording.id,
+          {
+            sizeBytes: objectMetadata.size,
+            inputMimeType: mimeType,
+            durationMs: Math.round(media.durationSeconds * 1000),
+          },
+          trx
+        );
+        if (!validatedRecording) {
+          return;
+        }
+        await recordingOutbox.publishStageChanged(
+          {
+            stage: 'transcoding',
+            recordingId: recording.id,
+          },
+          trx
+        );
       });
-
-      if (!validatedRecording) {
-        throw new RecordingStateTransitionError(recording.id, 'validating', 'transcoding');
-      }
     });
   };
 }

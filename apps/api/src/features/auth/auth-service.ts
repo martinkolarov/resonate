@@ -15,22 +15,22 @@ import {
 } from '@/features/auth/lib/tokens.js';
 import type { Transaction } from 'kysely';
 import type { DB } from '@/types/db.generated.types.js';
-import type { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
 import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
+import type { AuthOutboxPublisher } from '@/features/auth/outbox.js';
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
 type AuthServiceDeps = {
+  authOutbox: AuthOutboxPublisher;
   emailVerifications: EmailVerificationRepository;
-  outboxMessages: OutboxMessageRepository;
   sessions: SessionRepository;
   transactionRunner: TransactionRunner;
   users: UserRepository;
 };
 
 export function createAuthService({
+  authOutbox,
   emailVerifications,
-  outboxMessages,
   sessions,
   transactionRunner,
   users,
@@ -78,8 +78,7 @@ export function createAuthService({
 
         await emailVerifications.upsert(user.id, hashToken(emailVerificationToken), trx);
 
-        await outboxMessages.enqueue(
-          'auth.send-verification-email',
+        await authOutbox.publishSendVerificationEmail(
           {
             to: user.email,
             subject: 'Verify your email',

@@ -7,6 +7,7 @@ import { createSessionRepository } from '@/features/auth/repositories/session.re
 import { createUserRepository } from '@/features/auth/repositories/user.repository.js';
 import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
+import { createAuthOutboxPublisher } from '@/features/auth/outbox.js';
 
 type AuthRoutesDeps = {
   infrastructure: Pick<Infrastructure, 'postgres' | 'outboxMessages' | 'transactionRunner'>;
@@ -38,9 +39,10 @@ export function createAuthRoutes({ infrastructure }: AuthRoutesDeps): AuthRoutes
   const emailVerifications = createEmailVerificationRepository(postgres);
   const sessions = createSessionRepository(postgres);
   const users = createUserRepository(postgres);
+  const authOutbox = createAuthOutboxPublisher(outboxMessages);
   const authService = createAuthService({
+    authOutbox,
     emailVerifications,
-    outboxMessages,
     sessions,
     transactionRunner,
     users,

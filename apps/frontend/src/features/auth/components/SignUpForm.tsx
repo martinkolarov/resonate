@@ -102,12 +102,7 @@ export function SignUpForm({ isSubmitting, onSubmit }: SignUpFormProps) {
           <p className="text-danger mt-1 text-xs">{errors.termsAccepted.message}</p>
         )}
       </div>
-      <Button
-        color="primary"
-        type="submit"
-        isDisabled={isSubmitting}
-        isLoading={isSubmitting}
-      >
+      <Button color="primary" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
         Sign Up
       </Button>
     </form>

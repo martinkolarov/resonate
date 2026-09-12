@@ -1,11 +1,12 @@
 import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { Queue, UnrecoverableError, Worker } from 'bullmq';
 import { createRecordingRepository } from '../repositories/recording.repository.js';
-import { RecordingRejectedError, RecordingStateTransitionError } from './errors.js';
+import { RecordingRejectedError } from './errors.js';
 import { createTranscodeRecording } from './transcode-recording.js';
 import { createValidateRecording } from './validate-recording.js';
 import { createTranscribeRecording } from './transcribe-recording.js';
 import { createTranscriptRepository } from '../repositories/transcript.repository.js';
+import type { RecordingOutboxPublisher } from '../outbox.js';
 
 type ValidateRecordingJobData = {
   recordingId: string;
@@ -31,10 +32,18 @@ type RecordingJobName =
 
 type RecordingPipelineDeps = Pick<
   Infrastructure,
-  'mediaProcessor' | 'objectStorage' | 'postgres' | 'redis' | 'mongo'
+  | 'mediaProcessor'
+  | 'objectStorage'
+  | 'postgres'
+  | 'redis'
+  | 'mongo'
+  | 'transactionRunner'
 >;
 
-export function createRecordingPipeline(infrastructure: RecordingPipelineDeps) {
+export function createRecordingPipeline(
+  infrastructure: RecordingPipelineDeps,
+  recordingOutbox: RecordingOutboxPublisher
+) {
   const queue = new Queue<RecordingJobData, unknown, RecordingJobName>('recordings', {
     connection: infrastructure.redis,
     defaultJobOptions: {
@@ -65,21 +74,28 @@ export function createRecordingPipeline(infrastructure: RecordingPipelineDeps) {
       jobId: `summarize-recording-${data.recordingId}`,
     });
   }
+
   const recordings = createRecordingRepository(infrastructure.postgres);
   const transcripts = createTranscriptRepository(infrastructure.mongo);
 
   const validateRecording = createValidateRecording({
     mediaProcessor: infrastructure.mediaProcessor,
     objectStorage: infrastructure.objectStorage,
+    transactionRunner: infrastructure.transactionRunner,
+    recordingOutbox,
     recordings,
   });
   const transcodeRecording = createTranscodeRecording({
     mediaProcessor: infrastructure.mediaProcessor,
     objectStorage: infrastructure.objectStorage,
+    transactionRunner: infrastructure.transactionRunner,
+    recordingOutbox,
     recordings,
   });
   const transcribeRecording = createTranscribeRecording({
     objectStorage: infrastructure.objectStorage,
+    transactionRunner: infrastructure.transactionRunner,
+    recordingOutbox,
     recordings,
     transcripts,
   });
@@ -93,19 +109,16 @@ export function createRecordingPipeline(infrastructure: RecordingPipelineDeps) {
           case 'validate-recording': {
             const recordingId = job.data.recordingId;
             await validateRecording(recordingId);
-            await enqueueTranscodeRecording({ recordingId });
             break;
           }
           case 'transcode-recording': {
             const recordingId = job.data.recordingId;
             await transcodeRecording(recordingId);
-            await enqueueTranscribeRecording({ recordingId });
             break;
           }
           case 'transcribe-recording': {
             const recordingId = job.data.recordingId;
             await transcribeRecording(recordingId);
-            await enqueueSummarizeRecording({ recordingId });
             break;
           }
           case 'summarize-recording': {
@@ -118,10 +131,6 @@ export function createRecordingPipeline(infrastructure: RecordingPipelineDeps) {
           await recordings.markFailed(job.data.recordingId, JSON.stringify(error));
           throw new UnrecoverableError(error.reason);
         }
-        if (error instanceof RecordingStateTransitionError) {
-          throw new UnrecoverableError(error.message);
-        }
-
         if (isFinalAttempt) {
           await recordings.markFailed(job.data.recordingId, JSON.stringify(error));
         }

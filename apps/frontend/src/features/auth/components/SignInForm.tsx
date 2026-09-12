@@ -67,12 +67,7 @@ export function SignInForm({ isSubmitting, onSubmit }: SignInFormProps) {
           Forgot password?
         </Link>
       </div>
-      <Button
-        color="primary"
-        type="submit"
-        isDisabled={isSubmitting}
-        isLoading={isSubmitting}
-      >
+      <Button color="primary" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
         Log In
       </Button>
     </form>

@@ -19,9 +19,3 @@ export class RecordingRejectedError extends Error {
     };
   }
 }
-
-export class RecordingStateTransitionError extends Error {
-  constructor(recordingId: string, from: string, to: string) {
-    super(`Recording ${recordingId} could not transition from ${from} to ${to}`);
-  }
-}

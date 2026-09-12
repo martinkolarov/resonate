@@ -1,18 +1,18 @@
 import type { RecordingRepository } from './repositories/recording.repository.js';
 import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
-import type { OutboxMessageRepository } from '@/infrastructure/outbox/outbox-message.repository.js';
 import type { ObjectStorage } from '@/infrastructure/object-storage/object-storage.js';
+import type { RecordingOutboxPublisher } from './outbox.js';
 
 type RecordingServiceDeps = {
   objectStorage: ObjectStorage;
-  outboxMessages: OutboxMessageRepository;
+  recordingOutbox: RecordingOutboxPublisher;
   recordings: RecordingRepository;
   transactionRunner: TransactionRunner;
 };
 
 export function createRecordingService({
   objectStorage,
-  outboxMessages,
+  recordingOutbox,
   recordings,
   transactionRunner,
 }: RecordingServiceDeps) {
@@ -53,9 +53,9 @@ export function createRecordingService({
         if (!validatingRecording) {
           throw new Error(`Could not mark recording ${recordingId} as validating`);
         }
-        await outboxMessages.enqueue(
-          'recording.uploaded',
+        await recordingOutbox.publishStageChanged(
           {
+            stage: 'validating',
             recordingId,
           },
           trx

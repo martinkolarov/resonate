@@ -2,9 +2,11 @@ import { MediaProcessor } from '@/infrastructure/media/media-processor.js';
 import { ObjectStorage } from '@/infrastructure/object-storage/object-storage.js';
 import { stat } from 'node:fs/promises';
 import { RecordingRepository } from '../repositories/recording.repository.js';
-import { RecordingRejectedError, RecordingStateTransitionError } from './errors.js';
+import { RecordingRejectedError } from './errors.js';
 import { withRecordingWorkspace } from './with-recording-workspace.js';
 import { join } from 'node:path';
+import { TransactionRunner } from '@/infrastructure/transaction-runner.js';
+import type { RecordingOutboxPublisher } from '../outbox.js';
 
 async function fileExists(filePath: string) {
   const fileStats = await stat(filePath);
@@ -14,12 +16,16 @@ async function fileExists(filePath: string) {
 type TranscodeRecordingDeps = {
   mediaProcessor: MediaProcessor;
   objectStorage: ObjectStorage;
+  transactionRunner: TransactionRunner;
+  recordingOutbox: RecordingOutboxPublisher;
   recordings: RecordingRepository;
 };
 
 export function createTranscodeRecording({
   mediaProcessor,
   objectStorage,
+  transactionRunner,
+  recordingOutbox,
   recordings,
 }: TranscodeRecordingDeps) {
   return async function transcodeRecording(recordingId: string) {
@@ -52,15 +58,25 @@ export function createTranscodeRecording({
       const transcodedObjectKey = `recordings/${recordingId}`;
       await objectStorage.uploadFromFile(transcodedObjectKey, transcodedFilePath, 'audio/mpeg');
 
-      const transcodedRecording = await recordings.completeTranscoding(
-        recordingId,
-        transcodedObjectKey,
-        'audio/mpeg'
-      );
+      await transactionRunner.run(async trx => {
+        const transcodedRecording = await recordings.completeTranscoding(
+          recordingId,
+          transcodedObjectKey,
+          'audio/mpeg',
+          trx
+        );
 
-      if (!transcodedRecording) {
-        throw new RecordingStateTransitionError(recordingId, 'transcoding', 'transcribing');
-      }
+        if (!transcodedRecording) {
+          return;
+        }
+        await recordingOutbox.publishStageChanged(
+          {
+            stage: 'transcribing',
+            recordingId,
+          },
+          trx
+        );
+      });
     });
   };
 }
