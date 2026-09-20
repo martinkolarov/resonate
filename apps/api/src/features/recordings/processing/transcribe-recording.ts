@@ -32,6 +32,40 @@ const elevenLabsResponseSchema = z.object({
   body: elevenLabsBodySchema,
 });
 
+const elevenLabs = createElevenLabs({
+  apiKey: env.ELEVENLABS_API_KEY,
+});
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function wordsToSegments(words: any) {
+  let currentSpeakerId;
+  const segments = [];
+  for (const word of words) {
+    if (word.speaker_id !== currentSpeakerId) {
+      currentSpeakerId = word.speaker_id;
+      segments.push({
+        speakerId: currentSpeakerId,
+        words: [
+          {
+            type: word.type,
+            text: word.text,
+            start: word.start,
+            end: word.end,
+          },
+        ],
+      });
+    } else {
+      segments.at(-1)?.words.push({
+        type: word.type,
+        text: word.text,
+        start: word.start,
+        end: word.end,
+      });
+    }
+  }
+  return segments;
+}
+
 type TranscribeRecordingDeps = {
   objectStorage: ObjectStorage;
   transactionRunner: TransactionRunner;
@@ -62,9 +96,6 @@ export function createTranscribeRecording({
     return withRecordingWorkspace(recordingId, async workspaceDirectory => {
       const audioFilePath = join(workspaceDirectory, 'source');
       await objectStorage.downloadToFile(outputObjectKey, audioFilePath);
-      const elevenLabs = createElevenLabs({
-        apiKey: env.ELEVENLABS_API_KEY,
-      });
       const result = await transcribe({
         model: elevenLabs.transcription('scribe_v2'),
         audio: await readFile(audioFilePath),
@@ -78,31 +109,7 @@ export function createTranscribeRecording({
       });
       const response = z.array(elevenLabsResponseSchema).parse(result.responses)[0];
       const { language_code, text, audio_duration_secs, words } = response.body;
-      let currentSpeakerId;
-      const segments = [];
-      for (const word of words) {
-        if (word.speaker_id !== currentSpeakerId) {
-          currentSpeakerId = word.speaker_id;
-          segments.push({
-            speakerId: currentSpeakerId,
-            words: [
-              {
-                type: word.type,
-                text: word.text,
-                start: word.start,
-                end: word.end,
-              },
-            ],
-          });
-        } else {
-          segments.at(-1)?.words.push({
-            type: word.type,
-            text: word.text,
-            start: word.start,
-            end: word.end,
-          });
-        }
-      }
+      const segments = wordsToSegments(words);
       await transcripts.upsert(recordingId, {
         model: 'scribe_v2',
         provider: 'elevenlabs',

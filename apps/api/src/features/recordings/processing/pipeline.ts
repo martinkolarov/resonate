@@ -7,6 +7,7 @@ import { createValidateRecording } from './validate-recording.js';
 import { createTranscribeRecording } from './transcribe-recording.js';
 import { createTranscriptRepository } from '../repositories/transcript.repository.js';
 import type { RecordingOutboxPublisher } from '../outbox.js';
+import { createSummarizeRecording } from './summarize-recording.js';
 
 type ValidateRecordingJobData = {
   recordingId: string;
@@ -32,12 +33,7 @@ type RecordingJobName =
 
 type RecordingPipelineDeps = Pick<
   Infrastructure,
-  | 'mediaProcessor'
-  | 'objectStorage'
-  | 'postgres'
-  | 'redis'
-  | 'mongo'
-  | 'transactionRunner'
+  'mediaProcessor' | 'objectStorage' | 'postgres' | 'redis' | 'mongo' | 'transactionRunner'
 >;
 
 export function createRecordingPipeline(
@@ -99,6 +95,9 @@ export function createRecordingPipeline(
     recordings,
     transcripts,
   });
+  const summarizeRecording = createSummarizeRecording({
+    transcripts,
+  });
   const worker = new Worker<RecordingJobData, unknown, RecordingJobName>(
     'recordings',
     async job => {
@@ -122,7 +121,8 @@ export function createRecordingPipeline(
             break;
           }
           case 'summarize-recording': {
-            console.log('Summarizing...');
+            const recordingId = job.data.recordingId;
+            await summarizeRecording(recordingId);
             break;
           }
         }

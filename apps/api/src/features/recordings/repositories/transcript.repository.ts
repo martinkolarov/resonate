@@ -72,6 +72,12 @@ export function createTranscriptRepository(mongo: Db) {
         { upsert: true }
       );
     },
+
+    async findByRecordingId(recordingId: string) {
+      return transcripts.findOne({
+        recordingId,
+      });
+    },
   };
 }
 
