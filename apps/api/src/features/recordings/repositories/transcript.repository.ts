@@ -1,5 +1,5 @@
 import { Db } from 'mongodb';
-import { TranscriptDocument, TranscriptSegment } from '../types.js';
+import { TranscriptDocument, TranscriptSegment, TranscriptSummary } from '../types.js';
 
 export function createTranscriptRepository(mongo: Db) {
   const transcripts = mongo.collection<TranscriptDocument>('transcripts');
@@ -77,6 +77,19 @@ export function createTranscriptRepository(mongo: Db) {
       return transcripts.findOne({
         recordingId,
       });
+    },
+
+    async attachSummary(recordingId: string, summary: TranscriptSummary) {
+      await transcripts.updateOne(
+        {
+          recordingId,
+        },
+        {
+          $set: {
+            summary,
+          },
+        }
+      );
     },
   };
 }

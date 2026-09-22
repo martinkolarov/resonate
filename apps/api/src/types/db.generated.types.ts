@@ -31,6 +31,16 @@ export interface OutboxMessages {
   type: string;
 }
 
+export interface RecordingEvents {
+  created_at: Generated<Timestamp>;
+  failed_reason: string | null;
+  id: Generated<Int8>;
+  processing_job_id: string;
+  processing_stage: string | null;
+  recording_id: string;
+  status: string;
+}
+
 export interface Recordings {
   created_at: Generated<Timestamp>;
   duration_ms: number | null;
@@ -68,6 +78,7 @@ export interface Users {
 export interface DB {
   email_verifications: EmailVerifications;
   outbox_messages: OutboxMessages;
+  recording_events: RecordingEvents;
   recordings: Recordings;
   sessions: Sessions;
   users: Users;

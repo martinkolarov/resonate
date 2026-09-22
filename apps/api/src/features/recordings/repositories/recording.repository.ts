@@ -35,6 +35,14 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
         .executeTakeFirst();
     },
 
+    async listByUserId(userId: string) {
+      return await postgres
+        .selectFrom('recordings')
+        .select(['id', 'file_name', 'status', 'created_at'])
+        .where('user_id', '=', userId)
+        .execute();
+    },
+
     async markUploaded(userId: string, recordingId: string, trx?: Transaction<DB>) {
       return await (trx ?? postgres)
         .updateTable('recordings')
@@ -46,13 +54,20 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
         .executeTakeFirst();
     },
 
-    async markFailed(recordingId: string, message: string) {
-      return await postgres
+    async markFailed(
+      recordingId: string,
+      processingStage: string,
+      message: string,
+      trx?: Transaction<DB>
+    ) {
+      return await (trx ?? postgres)
         .updateTable('recordings')
         .set({ status: 'failed', failed_reason: message })
         .where('status', '=', 'processing')
+        .where('processing_stage', '=', processingStage)
         .where('id', '=', recordingId)
-        .execute();
+        .returningAll()
+        .executeTakeFirst();
     },
 
     async startValidation(recordingId: string, trx?: Transaction<DB>) {
@@ -126,12 +141,18 @@ export function createRecordingRepository(postgres: Kysely<DB>) {
         .executeTakeFirst();
     },
 
-    async listByUserId(userId: string) {
-      return await postgres
-        .selectFrom('recordings')
-        .select(['id', 'file_name', 'status', 'created_at'])
-        .where('user_id', '=', userId)
-        .execute();
+    async completeSummarization(recordingId: string, trx?: Transaction<DB>) {
+      return await (trx ?? postgres)
+        .updateTable('recordings')
+        .set({
+          status: 'ready',
+          processing_stage: null,
+        })
+        .where('id', '=', recordingId)
+        .where('status', '=', 'processing')
+        .where('processing_stage', '=', 'summarizing')
+        .returningAll()
+        .executeTakeFirst();
     },
   };
 }

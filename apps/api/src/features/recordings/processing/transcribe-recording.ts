@@ -11,6 +11,7 @@ import type { RecordingOutboxPublisher } from '../outbox.js';
 import { withRecordingWorkspace } from './with-recording-workspace.js';
 import { join } from 'node:path';
 import { readFile } from 'node:fs/promises';
+import type { RecordingEventRepository } from '../repositories/recording-event.repository.js';
 
 const elevenLabsBodySchema = z.object({
   language_code: z.string(),
@@ -70,6 +71,7 @@ type TranscribeRecordingDeps = {
   objectStorage: ObjectStorage;
   transactionRunner: TransactionRunner;
   recordingOutbox: RecordingOutboxPublisher;
+  recordingEvents: RecordingEventRepository;
   recordings: RecordingRepository;
   transcripts: TranscriptRepository;
 };
@@ -78,6 +80,7 @@ export function createTranscribeRecording({
   objectStorage,
   transactionRunner,
   recordingOutbox,
+  recordingEvents,
   recordings,
   transcripts,
 }: TranscribeRecordingDeps) {
@@ -123,6 +126,15 @@ export function createTranscribeRecording({
         if (!transcribedRecording) {
           return;
         }
+        await recordingEvents.create(
+          {
+            recordingId,
+            processingJobId: `summarize-recording-${recordingId}`,
+            status: transcribedRecording.status,
+            processingStage: transcribedRecording.processing_stage,
+          },
+          trx
+        );
         await recordingOutbox.publishStageChanged(
           {
             stage: 'summarizing',

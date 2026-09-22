@@ -6,6 +6,7 @@ import { withRecordingWorkspace } from './with-recording-workspace.js';
 import { join } from 'node:path';
 import { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 import type { RecordingOutboxPublisher } from '../outbox.js';
+import type { RecordingEventRepository } from '../repositories/recording-event.repository.js';
 
 const MAX_FILE_SIZE_BYTES = 100_000_000; // 100 MB
 const MAX_RECORDING_DURATION_SECONDS = 60 * 60; // 60 minutes
@@ -37,6 +38,7 @@ type ValidateRecordingDeps = {
   objectStorage: ObjectStorage;
   transactionRunner: TransactionRunner;
   recordingOutbox: RecordingOutboxPublisher;
+  recordingEvents: RecordingEventRepository;
   recordings: RecordingRepository;
 };
 
@@ -45,6 +47,7 @@ export function createValidateRecording({
   objectStorage,
   transactionRunner,
   recordingOutbox,
+  recordingEvents,
   recordings,
 }: ValidateRecordingDeps) {
   return async function validateRecording(recordingId: string) {
@@ -99,6 +102,15 @@ export function createValidateRecording({
         if (!validatedRecording) {
           return;
         }
+        await recordingEvents.create(
+          {
+            recordingId,
+            processingJobId: `transcode-recording-${recordingId}`,
+            status: validatedRecording.status,
+            processingStage: validatedRecording.processing_stage,
+          },
+          trx
+        );
         await recordingOutbox.publishStageChanged(
           {
             stage: 'transcoding',

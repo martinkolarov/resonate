@@ -2,16 +2,17 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { TranscriptRepository } from '../repositories/transcript.repository.js';
 import env from '@/env.js';
 import { generateText, Output } from 'ai';
-import z from 'zod';
 import { RecordingRejectedError } from './errors.js';
-import { writeFile } from 'node:fs/promises';
-import type { TranscriptSegment } from '../types.js';
+import { transcriptSummarySchema, type TranscriptSegment } from '../types.js';
+import { RecordingRepository } from '../repositories/recording.repository.js';
+import type { RecordingEventRepository } from '../repositories/recording-event.repository.js';
+import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 
 const openai = createOpenAI({
   apiKey: env.OPENAI_API_KEY,
 });
 
-function formatTranscriptForAnalysis(segments: TranscriptSegment[]) {
+function buildTranscriptFromSegments(segments: TranscriptSegment[]) {
   return segments
     .map(
       (segment, index) =>
@@ -20,46 +21,30 @@ function formatTranscriptForAnalysis(segments: TranscriptSegment[]) {
     .join('\n');
 }
 
-export function createSummarizeRecording({ transcripts }: { transcripts: TranscriptRepository }) {
+export function createSummarizeRecording({
+  recordings,
+  recordingEvents,
+  transcripts,
+  transactionRunner,
+}: {
+  recordings: RecordingRepository;
+  recordingEvents: RecordingEventRepository;
+  transcripts: TranscriptRepository;
+  transactionRunner: TransactionRunner;
+}) {
   return async function summarizeRecording(recordingId: string) {
     const transcript = await transcripts.findByRecordingId(recordingId);
     if (!transcript) {
       throw new RecordingRejectedError('RECORDING_NOT_FOUND');
     }
 
-    const formattedTranscript = formatTranscriptForAnalysis(transcript.segments);
+    const formattedTranscript = buildTranscriptFromSegments(transcript.segments);
 
     const { output } = await generateText({
-      model: openai('gpt-5.6-luna'),
+      model: openai('gpt-5.6-sol'),
 
       output: Output.object({
-        schema: z.object({
-          speakers: z.array(
-            z.object({
-              speakerId: z.string(),
-              identifiedName: z.string().nullable(),
-              evidenceSegmentIds: z.array(z.number()),
-            })
-          ),
-
-          summary: z.string(),
-
-          keyPoints: z.array(
-            z.object({
-              text: z.string(),
-              speakerIds: z.array(z.string()),
-              evidenceSegmentIds: z.array(z.number()),
-            })
-          ),
-
-          actionItems: z.array(
-            z.object({
-              text: z.string(),
-              ownerSpeakerId: z.string().nullable(),
-              evidenceSegmentIds: z.array(z.number()),
-            })
-          ),
-        }),
+        schema: transcriptSummarySchema,
       }),
 
       instructions: `
@@ -140,6 +125,21 @@ export function createSummarizeRecording({ transcripts }: { transcripts: Transcr
       </transcript>
       `,
     });
-    await writeFile('./output.txt', JSON.stringify(output, null, 2), { flag: 'w' });
+    await transcripts.attachSummary(recordingId, output);
+    await transactionRunner.run(async trx => {
+      const completedRecording = await recordings.completeSummarization(recordingId, trx);
+      if (!completedRecording) {
+        return;
+      }
+      await recordingEvents.create(
+        {
+          recordingId,
+          processingJobId: `summarize-recording-${recordingId}`,
+          status: completedRecording.status,
+          processingStage: completedRecording.processing_stage,
+        },
+        trx
+      );
+    });
   };
 }

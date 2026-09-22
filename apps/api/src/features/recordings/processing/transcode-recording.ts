@@ -7,6 +7,7 @@ import { withRecordingWorkspace } from './with-recording-workspace.js';
 import { join } from 'node:path';
 import { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 import type { RecordingOutboxPublisher } from '../outbox.js';
+import type { RecordingEventRepository } from '../repositories/recording-event.repository.js';
 
 async function fileExists(filePath: string) {
   const fileStats = await stat(filePath);
@@ -18,6 +19,7 @@ type TranscodeRecordingDeps = {
   objectStorage: ObjectStorage;
   transactionRunner: TransactionRunner;
   recordingOutbox: RecordingOutboxPublisher;
+  recordingEvents: RecordingEventRepository;
   recordings: RecordingRepository;
 };
 
@@ -26,6 +28,7 @@ export function createTranscodeRecording({
   objectStorage,
   transactionRunner,
   recordingOutbox,
+  recordingEvents,
   recordings,
 }: TranscodeRecordingDeps) {
   return async function transcodeRecording(recordingId: string) {
@@ -69,6 +72,15 @@ export function createTranscodeRecording({
         if (!transcodedRecording) {
           return;
         }
+        await recordingEvents.create(
+          {
+            recordingId,
+            processingJobId: `transcribe-recording-${recordingId}`,
+            status: transcodedRecording.status,
+            processingStage: transcodedRecording.processing_stage,
+          },
+          trx
+        );
         await recordingOutbox.publishStageChanged(
           {
             stage: 'transcribing',

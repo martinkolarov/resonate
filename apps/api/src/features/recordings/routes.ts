@@ -5,6 +5,7 @@ import type { Infrastructure } from '@/infrastructure/infrastructure.js';
 import { ValidationError } from '@/lib/errors.js';
 import { Router, type RequestHandler } from 'express';
 import { createRecordingOutboxPublisher } from './outbox.js';
+import { createRecordingEventRepository } from './repositories/recording-event.repository.js';
 
 type RecordingRoutesDeps = {
   infrastructure: Pick<
@@ -25,9 +26,11 @@ export function createRecordingRoutes({
   const { postgres, objectStorage, outboxMessages, transactionRunner } = infrastructure;
   const recordingRepository = createRecordingRepository(postgres);
   const recordingOutbox = createRecordingOutboxPublisher(outboxMessages);
+  const recordingEvents = createRecordingEventRepository();
   const recordingService = createRecordingService({
     objectStorage,
     recordingOutbox,
+    recordingEvents,
     recordings: recordingRepository,
     transactionRunner,
   });
