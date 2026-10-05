@@ -81,8 +81,9 @@ export function createRecordingRoutes({
   router.get('/:recordingId/events', async (req, res) => {
     const { recordingId } = req.params;
     const userId = res.locals.user.id;
-    if (!(await recordingService.userOwnsRecording(userId, recordingId))) {
-      throw new ApiError('UNAUTHORIZED');
+    const recording = await recordingService.getById(recordingId);
+    if (!recording || recording.user_id !== userId) {
+      throw new ApiError('NOT_FOUND');
     }
 
     const abortController = new AbortController();
@@ -91,6 +92,11 @@ export function createRecordingRoutes({
     let lastEventId: string | undefined;
     if (typeof req.headers['last-event-id'] === 'string') {
       lastEventId = req.headers['last-event-id'];
+    }
+
+    if (recording.status === 'ready' || recording.status === 'failed') {
+      res.status(204).end();
+      return;
     }
 
     res.setHeaders(
@@ -110,6 +116,7 @@ export function createRecordingRoutes({
         res.write(
           `id:${event.id}\ndata:${JSON.stringify({ status: event.status, processingStage: event.processing_stage })}\n\n`
         );
+        if (event.status === 'ready' || event.status === 'failed') return;
       }
     } finally {
       res.end();

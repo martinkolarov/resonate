@@ -22,6 +22,10 @@ const apiErrorDefinitions = {
     statusCode: 500,
     message: 'Internal Server Error',
   },
+  NOT_FOUND: {
+    statusCode: 404,
+    message: 'Not found',
+  },
 } as const satisfies Record<ApiErrorCode, { statusCode: number; message: string }>;
 
 export class ApiError extends Error {

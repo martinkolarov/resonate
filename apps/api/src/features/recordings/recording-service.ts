@@ -76,20 +76,6 @@ export function createRecordingService({
       });
     },
 
-    async userOwnsRecording(userId: string, recordingId: string) {
-      const recording = await recordings.getById(recordingId);
-      if (recording && userId === recording.user_id) {
-        return true;
-      }
-      return false;
-    },
-
-    async getRecordingEvents(recordingId: string, lastEventId?: string) {
-      return lastEventId
-        ? recordingEvents.listByRecordingIdAfterCursor(recordingId, lastEventId)
-        : recordingEvents.listByRecordingId(recordingId);
-    },
-
     async *watchForRecordingEvents({
       recordingId,
       lastEventId,
@@ -101,7 +87,10 @@ export function createRecordingService({
     }) {
       let cursor = lastEventId;
       while (!signal.aborted) {
-        const events = await this.getRecordingEvents(recordingId, cursor);
+        const events = cursor
+          ? await recordingEvents.listByRecordingIdAfterCursor(recordingId, cursor)
+          : await recordingEvents.listByRecordingId(recordingId);
+
         for (const event of events) {
           yield event;
           cursor = event.id;

@@ -6,6 +6,7 @@ export const apiErrorCodeSchema = z.enum([
   'UNAUTHENTICATED',
   'UNAUTHORIZED',
   'INTERNAL_SERVER_ERROR',
+  'NOT_FOUND',
 ]);
 
 export const apiErrorResponseSchema = z.object({
