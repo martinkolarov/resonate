@@ -2,7 +2,7 @@ import { createRecordingBodySchema } from '@resonate/contracts';
 import { createRecordingService } from '@/features/recordings/recording-service.js';
 import { createRecordingRepository } from '@/features/recordings/repositories/recording.repository.js';
 import type { Infrastructure } from '@/infrastructure/infrastructure.js';
-import { ValidationError } from '@/lib/errors.js';
+import { ApiError, ValidationError } from '@/lib/errors.js';
 import { Router, type RequestHandler } from 'express';
 import { createRecordingOutboxPublisher } from './outbox.js';
 import { createRecordingEventRepository } from './repositories/recording-event.repository.js';
@@ -24,14 +24,14 @@ export function createRecordingRoutes({
   requireSession,
 }: RecordingRoutesDeps): RecordingRoutes {
   const { postgres, objectStorage, outboxMessages, transactionRunner } = infrastructure;
-  const recordingRepository = createRecordingRepository(postgres);
+  const recordings = createRecordingRepository(postgres);
   const recordingOutbox = createRecordingOutboxPublisher(outboxMessages);
-  const recordingEvents = createRecordingEventRepository();
+  const recordingEvents = createRecordingEventRepository(postgres);
   const recordingService = createRecordingService({
     objectStorage,
     recordingOutbox,
     recordingEvents,
-    recordings: recordingRepository,
+    recordings,
     transactionRunner,
   });
   const router = Router();
@@ -76,6 +76,44 @@ export function createRecordingRoutes({
     const userId = res.locals.user.id;
     await recordingService.completeUpload(userId, recordingId);
     return res.json('OK');
+  });
+
+  router.get('/:recordingId/events', async (req, res) => {
+    const { recordingId } = req.params;
+    const userId = res.locals.user.id;
+    if (!(await recordingService.userOwnsRecording(userId, recordingId))) {
+      throw new ApiError('UNAUTHORIZED');
+    }
+
+    const abortController = new AbortController();
+    req.on('close', () => abortController.abort());
+
+    let lastEventId: string | undefined;
+    if (typeof req.headers['last-event-id'] === 'string') {
+      lastEventId = req.headers['last-event-id'];
+    }
+
+    res.setHeaders(
+      new Map([
+        ['Content-Type', 'text/event-stream'],
+        ['Cache-Control', 'no-cache'],
+      ])
+    );
+    res.flushHeaders();
+
+    try {
+      for await (const event of recordingService.watchForRecordingEvents({
+        recordingId,
+        lastEventId,
+        signal: abortController.signal,
+      })) {
+        res.write(
+          `id:${event.id}\ndata:${JSON.stringify({ status: event.status, processingStage: event.processing_stage })}\n\n`
+        );
+      }
+    } finally {
+      res.end();
+    }
   });
 
   return {

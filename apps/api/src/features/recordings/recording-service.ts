@@ -3,6 +3,7 @@ import type { TransactionRunner } from '@/infrastructure/transaction-runner.js';
 import type { ObjectStorage } from '@/infrastructure/object-storage/object-storage.js';
 import type { RecordingOutboxPublisher } from './outbox.js';
 import type { RecordingEventRepository } from './repositories/recording-event.repository.js';
+import { setTimeout } from 'node:timers/promises';
 
 type RecordingServiceDeps = {
   objectStorage: ObjectStorage;
@@ -73,6 +74,41 @@ export function createRecordingService({
           trx
         );
       });
+    },
+
+    async userOwnsRecording(userId: string, recordingId: string) {
+      const recording = await recordings.getById(recordingId);
+      if (recording && userId === recording.user_id) {
+        return true;
+      }
+      return false;
+    },
+
+    async getRecordingEvents(recordingId: string, lastEventId?: string) {
+      return lastEventId
+        ? recordingEvents.listByRecordingIdAfterCursor(recordingId, lastEventId)
+        : recordingEvents.listByRecordingId(recordingId);
+    },
+
+    async *watchForRecordingEvents({
+      recordingId,
+      lastEventId,
+      signal,
+    }: {
+      recordingId: string;
+      signal: AbortSignal;
+      lastEventId?: string;
+    }) {
+      let cursor = lastEventId;
+      while (!signal.aborted) {
+        const events = await this.getRecordingEvents(recordingId, cursor);
+        for (const event of events) {
+          yield event;
+          cursor = event.id;
+          if (event.status === 'ready' || event.status === 'failed') return;
+        }
+        await setTimeout(1000, undefined, { signal }).catch(() => {});
+      }
     },
   };
 }

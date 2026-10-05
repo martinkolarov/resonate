@@ -1,18 +1,22 @@
 import type { DB } from '@/types/db.generated.types.js';
-import type { Transaction } from 'kysely';
+import type { Kysely, Transaction } from 'kysely';
 
-type CreateRecordingEvent = {
-  recordingId: string;
-  processingJobId: string;
-  status: string;
-  processingStage: string | null;
-  failedReason?: string | null;
-};
-
-export function createRecordingEventRepository() {
+export function createRecordingEventRepository(postgres: Kysely<DB>) {
   return {
     async create(
-      { recordingId, processingJobId, status, processingStage, failedReason }: CreateRecordingEvent,
+      {
+        recordingId,
+        processingJobId,
+        status,
+        processingStage,
+        failedReason,
+      }: {
+        recordingId: string;
+        processingJobId: string;
+        status: string;
+        processingStage: string | null;
+        failedReason?: string | null;
+      },
       trx: Transaction<DB>
     ) {
       return await trx
@@ -26,6 +30,23 @@ export function createRecordingEventRepository() {
         })
         .returning('id')
         .executeTakeFirstOrThrow();
+    },
+    async listByRecordingId(recordingId: string) {
+      return await postgres
+        .selectFrom('recording_events')
+        .selectAll()
+        .where('recording_id', '=', recordingId)
+        .orderBy('id', 'asc')
+        .execute();
+    },
+    async listByRecordingIdAfterCursor(recordingId: string, recordingEventId: string) {
+      return await postgres
+        .selectFrom('recording_events')
+        .selectAll()
+        .where('recording_id', '=', recordingId)
+        .where('id', '>', recordingEventId)
+        .orderBy('id', 'asc')
+        .execute();
     },
   };
 }

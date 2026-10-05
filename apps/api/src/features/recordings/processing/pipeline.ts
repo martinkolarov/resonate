@@ -20,6 +20,20 @@ const recordingStageByJobName = {
   'summarize-recording': 'summarizing',
 } as const satisfies Record<RecordingJobName, string>;
 
+function failureReason(error: unknown): string {
+  if (error instanceof RecordingRejectedError) {
+    return JSON.stringify(error);
+  }
+  if (error instanceof Error) {
+    return JSON.stringify({ name: error.name, message: error.message });
+  }
+  try {
+    return JSON.stringify(error) ?? String(error);
+  } catch {
+    return String(error);
+  }
+}
+
 type ValidateRecordingJobData = {
   recordingId: string;
 };
@@ -80,21 +94,20 @@ export function createRecordingPipeline(
   }
 
   const recordings = createRecordingRepository(infrastructure.postgres);
-  const recordingEvents = createRecordingEventRepository();
+  const recordingEvents = createRecordingEventRepository(infrastructure.postgres);
   const transcripts = createTranscriptRepository(infrastructure.mongo);
 
   async function failRecording(
     recordingId: string,
     processingJobId: string,
     processingStage: string,
-    storedReason: string,
-    eventReason: string
+    reason: string
   ) {
     await infrastructure.transactionRunner.run(async trx => {
       const failedRecording = await recordings.markFailed(
         recordingId,
         processingStage,
-        storedReason,
+        reason,
         trx
       );
       if (!failedRecording) {
@@ -106,7 +119,7 @@ export function createRecordingPipeline(
           processingJobId,
           status: failedRecording.status,
           processingStage: failedRecording.processing_stage,
-          failedReason: eventReason,
+          failedReason: reason,
         },
         trx
       );
@@ -178,8 +191,7 @@ export function createRecordingPipeline(
             job.data.recordingId,
             processingJobId,
             recordingStageByJobName[job.name],
-            JSON.stringify(error),
-            error.reason
+            failureReason(error)
           );
           throw new UnrecoverableError(error.reason);
         }
@@ -188,8 +200,7 @@ export function createRecordingPipeline(
             job.data.recordingId,
             processingJobId,
             recordingStageByJobName[job.name],
-            JSON.stringify(error),
-            'PROCESSING_FAILED'
+            failureReason(error)
           );
         }
 

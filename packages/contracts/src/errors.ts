@@ -4,6 +4,7 @@ export const apiErrorCodeSchema = z.enum([
   'EMAIL_ALREADY_REGISTERED',
   'INVALID_CREDENTIALS',
   'UNAUTHENTICATED',
+  'UNAUTHORIZED',
   'INTERNAL_SERVER_ERROR',
 ]);
 

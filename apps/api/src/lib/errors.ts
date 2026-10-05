@@ -14,6 +14,10 @@ const apiErrorDefinitions = {
     statusCode: 401,
     message: 'Authentication required',
   },
+  UNAUTHORIZED: {
+    statusCode: 401,
+    message: 'No permission to perform this action',
+  },
   INTERNAL_SERVER_ERROR: {
     statusCode: 500,
     message: 'Internal Server Error',
